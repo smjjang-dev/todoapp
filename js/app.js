@@ -81,7 +81,7 @@ function render(todos) {
     if (todo.completed && todo.completed_at) {
       const completedAt = document.createElement('span');
       completedAt.className = 'completed-at';
-      completedAt.textContent = new Date(todo.completed_at).toLocaleString();
+      completedAt.textContent = new Date(todo.completed_at).toLocaleString('ko-KR');
       textWrap.appendChild(completedAt);
     }
 
