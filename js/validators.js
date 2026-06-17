@@ -1,0 +1,13 @@
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+export function isValidEmail(email) {
+  return typeof email === 'string' && EMAIL_PATTERN.test(email);
+}
+
+export function isValidPassword(password) {
+  return typeof password === 'string' && password.length >= 6;
+}
+
+export function isValidNickname(nickname) {
+  return typeof nickname === 'string' && nickname.trim().length > 0;
+}

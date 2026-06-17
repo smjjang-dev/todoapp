@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>로그인 - Todo List</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <main class="app auth-app">
+    <h1>로그인</h1>
+    <form id="login-form" class="auth-form">
+      <input id="email" type="email" placeholder="이메일" autocomplete="email" required>
+      <input id="password" type="password" placeholder="비밀번호" autocomplete="current-password" required>
+      <button type="submit">로그인</button>
+    </form>
+    <p id="error-message" class="error-message"></p>
+    <p class="auth-switch">계정이 없으신가요? <a href="signup.html">회원가입</a></p>
+  </main>
+  <script type="module">
+    import { signIn, redirectIfAuthed } from './js/auth.js';
+
+    redirectIfAuthed();
+
+    const form = document.getElementById('login-form');
+    const errorMessage = document.getElementById('error-message');
+
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      errorMessage.textContent = '';
+      const email = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value;
+
+      const { error } = await signIn({ email, password });
+      if (error) {
+        errorMessage.textContent = error.message;
+        return;
+      }
+      window.location.href = 'index.html';
+    });
+  </script>
+</body>
+</html>
