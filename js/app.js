@@ -1,7 +1,7 @@
 import { supabase } from './supabaseClient.js';
 import { requireSession, signOut } from './auth.js';
 import {
-  priorityLabel,
+  PRIORITY_LABELS,
   nextPosition,
   reorderByIds,
   withCompletionToggle,
@@ -66,9 +66,15 @@ function render(todos) {
     checkbox.className = 'toggle-checkbox';
     checkbox.checked = todo.completed;
 
-    const badge = document.createElement('span');
-    badge.className = `priority-badge priority-${todo.priority}`;
-    badge.textContent = priorityLabel(todo.priority);
+    const prioritySelectEl = document.createElement('select');
+    prioritySelectEl.className = `priority-select priority-${todo.priority}`;
+    for (const [value, label] of Object.entries(PRIORITY_LABELS)) {
+      const option = document.createElement('option');
+      option.value = value;
+      option.textContent = label;
+      option.selected = value === todo.priority;
+      prioritySelectEl.appendChild(option);
+    }
 
     const textWrap = document.createElement('span');
     textWrap.className = 'todo-text-wrap';
@@ -92,7 +98,7 @@ function render(todos) {
 
     item.appendChild(handle);
     item.appendChild(checkbox);
-    item.appendChild(badge);
+    item.appendChild(prioritySelectEl);
     item.appendChild(textWrap);
     item.appendChild(deleteBtn);
     list.appendChild(item);
@@ -130,6 +136,11 @@ async function toggleTodo(id, completed) {
     .from('todo_todos')
     .update(withCompletionToggle(completed))
     .eq('id', id);
+  if (error) throw error;
+}
+
+async function updatePriority(id, priority) {
+  const { error } = await supabase.from('todo_todos').update({ priority }).eq('id', id);
   if (error) throw error;
 }
 
@@ -172,6 +183,10 @@ list.addEventListener('change', async (event) => {
   if (event.target.classList.contains('toggle-checkbox')) {
     const item = event.target.closest('.todo-item');
     await toggleTodo(item.dataset.id, event.target.checked);
+    await refresh();
+  } else if (event.target.classList.contains('priority-select')) {
+    const item = event.target.closest('.todo-item');
+    await updatePriority(item.dataset.id, event.target.value);
     await refresh();
   }
 });
