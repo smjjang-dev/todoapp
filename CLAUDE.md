@@ -39,17 +39,23 @@ python3 -m http.server 8000
 - `js/validators.js` — 순수 함수(단위테스트 대상): `isValidEmail`, `isValidPassword`,
   `isValidNickname`.
 - `js/auth.js` — `signUp`/`signIn`/`signOut`/`getSession`/`requireSession`/
-  `redirectIfAuthed`/`signInWithOAuth`. `signInWithOAuth`는 함수만 준비되어 있고
-  현재 UI에 버튼은 없음(Provider 설정 후 버튼만 추가하면 되도록 미리 대비).
+  `redirectIfAuthed`/`signInWithOAuth`. `signInWithOAuth(provider)`는 `redirectTo`를
+  `index.html`로 고정해 호출하며, `login.html`/`signup.html`의 "Google로 계속하기"/
+  "GitHub로 계속하기" 버튼이 각각 `'google'`/`'github'`로 호출한다(실제 로그인은
+  Supabase 대시보드에서 해당 Provider를 활성화해야 동작).
 - `js/app.js` — Supabase 쿼리(`todo_todos`/`todo_profiles`)와 DOM 렌더링 오케스트레이션.
   `loadTodos`/`saveTodos`(localStorage)는 더 이상 없고 `fetchTodos`/`addTodo`/`toggleTodo`/
-  `deleteTodo`/`persistOrder`가 그 자리를 대신한다. 모든 변경 핸들러는 `async`이며, 변경
-  후 항상 `fetchTodos()` + `render()`로 서버 상태를 다시 그린다(로컬 상태를 직접 패치하지
-  않음).
+  `updatePriority`/`deleteTodo`/`persistOrder`가 그 자리를 대신한다. 모든 변경 핸들러는
+  `async`이며, 변경 후 항상 `fetchTodos()` + `render()`로 서버 상태를 다시 그린다(로컬
+  상태를 직접 패치하지 않음).
   - 순서 변경은 기존과 동일하게 HTML5 Drag and Drop API로 구현하되, 드롭 후
     `persistOrder()`가 `todoLogic.reorderByIds()` 결과로 `todo_todos.position`을 일괄
     update한다. `.todo-item`은 기본 `draggable=false`이며 `.drag-handle`을 `mousedown`했을
     때만 `true`로 바뀐다(이 패턴은 변경 금지 — 아래 주의사항 참고).
+  - 중요도는 각 항목의 `.priority-select`(`<select>`)로 즉시 변경 가능하다. `change`
+    이벤트로 `updatePriority(id, priority)`가 `todo_todos.priority`를 update한 뒤
+    `refresh()`로 다시 그린다(생성 시 폼의 우선순위 select와 별개로, 기존 항목도 언제든
+    재분류 가능).
 - `tests/todoLogic.test.js`, `tests/validators.test.js` — Node 내장 테스트 러너
   (`node --test`)로 `todoLogic.js`/`validators.js`만 검증. `app.js`/`auth.js`는 Supabase·DOM
   의존이라 단위테스트 대상에서 제외하고 브라우저 수동 검증으로 커버한다.
@@ -98,7 +104,34 @@ $$ language plpgsql security definer;
 create trigger on_auth_user_created
   after insert on auth.users
   for each row execute procedure public.handle_new_user();
+```
 
+GitHub OAuth로 가입한 사용자가 GitHub 프로필에 "Name"을 설정하지 않은 경우
+`full_name`/`name`이 비어있고 `user_name`(GitHub 아이디)만 채워지므로, `coalesce`에
+`user_name`을 추가해야 닉네임이 이메일 앞부분으로 떨어지지 않는다(Supabase SQL
+에디터에서 `create or replace function`으로 갱신):
+
+```sql
+create or replace function public.handle_new_user()
+returns trigger as $$
+begin
+  insert into public.todo_profiles (id, nickname)
+  values (
+    new.id,
+    coalesce(
+      new.raw_user_meta_data->>'nickname',
+      new.raw_user_meta_data->>'full_name',
+      new.raw_user_meta_data->>'name',
+      new.raw_user_meta_data->>'user_name',
+      split_part(new.email, '@', 1)
+    )
+  );
+  return new;
+end;
+$$ language plpgsql security definer;
+```
+
+```sql
 create table todo_todos (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users(id) on delete cascade default auth.uid(),
@@ -126,8 +159,13 @@ Supabase 대시보드 Authentication → Providers → Email에서 "Confirm emai
 3. `smjjang-dev/todoapp` 저장소를 새로 클론, 이 폴더의 파일들을 복사해 커밋/푸시
 4. 그 저장소 Settings → Pages에서 `main` 브랜치 루트로 배포 활성화 후 배포 URL에서 동일
    시나리오 재검증
-5. (범위 밖, 추후) Supabase Authentication → Providers에서 Google/Kakao 활성화 후
-   `login.html`에 버튼만 추가 — `signInWithOAuth`는 이미 준비되어 있어 코드 변경 최소화
+5. Google/GitHub 소셜 로그인은 코드상 구현 완료(`login.html`/`signup.html`의 버튼,
+   `js/auth.js`의 `redirectTo`). 실제 동작하려면 Supabase 대시보드 Authentication →
+   Providers에서 Google/GitHub를 각각 활성화하고(Google Cloud Console/GitHub OAuth
+   App에서 발급한 Client ID/Secret 입력), Authentication → URL Configuration →
+   Redirect URLs에 `.../index.html` 형태로 로컬·배포 URL을 등록해야 한다. 위 SQL의
+   `user_name` 대응 트리거도 함께 적용할 것. Kakao는 추후 동일 패턴(Provider 활성화 +
+   버튼 추가)으로 확장 가능.
 
 ## 주의사항
 
@@ -139,3 +177,6 @@ Supabase 대시보드 Authentication → Providers → Email에서 "Confirm emai
   서버 값을 다시 가져와 `render()`한다(네트워크 실패/동시성으로 인한 상태 불일치 방지).
 - `js/config.js`의 publishable(anon) key는 RLS로 보호되므로 커밋해도 안전하지만,
   서비스 role key는 절대 클라이언트 코드에 넣지 말 것.
+- `signInWithOAuth`의 `redirectTo`는 `index.html`로 고정되어 있다 — 다른 페이지로
+  바꾸지 말 것(`requireSession()`이 그 페이지에서 정상 동작해야 OAuth 콜백 후
+  로그인 상태가 올바르게 인식된다).

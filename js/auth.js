@@ -43,5 +43,10 @@ export async function redirectIfAuthed() {
 }
 
 export async function signInWithOAuth(provider) {
-  return supabase.auth.signInWithOAuth({ provider });
+  return supabase.auth.signInWithOAuth({
+    provider,
+    options: {
+      redirectTo: new URL('index.html', window.location.href).toString(),
+    },
+  });
 }
