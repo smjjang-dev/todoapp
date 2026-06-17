@@ -10,6 +10,7 @@ body {
   background: #f4f5f7;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   color: #1f2933;
+  overscroll-behavior-y: contain;
 }
 
 .app {
@@ -125,7 +126,7 @@ h1 {
   user-select: none;
 }
 
-.todo-item.dragging {
+.todo-item.sortable-ghost {
   opacity: 0.5;
 }
 

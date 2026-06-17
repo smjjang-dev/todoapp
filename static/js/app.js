@@ -1,3 +1,4 @@
+import Sortable from 'https://esm.sh/sortablejs';
 import { supabase } from './supabaseClient.js';
 import { requireSession, signOut } from './auth.js';
 import {
@@ -54,7 +55,6 @@ function render(todos) {
     const item = document.createElement('li');
     item.className = 'todo-item' + (todo.completed ? ' completed' : '');
     item.dataset.id = todo.id;
-    item.draggable = false;
 
     const handle = document.createElement('span');
     handle.className = 'drag-handle';
@@ -103,21 +103,6 @@ function render(todos) {
     item.appendChild(deleteBtn);
     list.appendChild(item);
   }
-}
-
-function getDragAfterElement(container, y) {
-  const items = [...container.querySelectorAll('.todo-item:not(.dragging)')];
-  return items.reduce(
-    (closest, child) => {
-      const box = child.getBoundingClientRect();
-      const offset = y - box.top - box.height / 2;
-      if (offset < 0 && offset > closest.offset) {
-        return { offset, element: child };
-      }
-      return closest;
-    },
-    { offset: Number.NEGATIVE_INFINITY, element: null }
-  ).element;
 }
 
 async function addTodo(text, priority) {
@@ -191,46 +176,13 @@ list.addEventListener('change', async (event) => {
   }
 });
 
-list.addEventListener('mousedown', (event) => {
-  const handle = event.target.closest('.drag-handle');
-  if (!handle) return;
-  const item = handle.closest('.todo-item');
-  item.draggable = true;
-});
-
-document.addEventListener('mouseup', () => {
-  list.querySelectorAll('.todo-item[draggable="true"]').forEach((item) => {
-    item.draggable = false;
-  });
-});
-
-list.addEventListener('dragstart', (event) => {
-  const item = event.target.closest('.todo-item');
-  if (!item) return;
-  item.classList.add('dragging');
-  event.dataTransfer.effectAllowed = 'move';
-  event.dataTransfer.setData('text/plain', item.dataset.id);
-});
-
-list.addEventListener('dragover', (event) => {
-  const dragging = list.querySelector('.dragging');
-  if (!dragging) return;
-  event.preventDefault();
-  const afterElement = getDragAfterElement(list, event.clientY);
-  if (afterElement == null) {
-    list.appendChild(dragging);
-  } else {
-    list.insertBefore(dragging, afterElement);
-  }
-});
-
-list.addEventListener('dragend', async (event) => {
-  const item = event.target.closest('.todo-item');
-  if (!item) return;
-  item.classList.remove('dragging');
-  item.draggable = false;
-  await persistOrder();
-  await refresh();
+Sortable.create(list, {
+  handle: '.drag-handle',
+  animation: 150,
+  onEnd: async () => {
+    await persistOrder();
+    await refresh();
+  },
 });
 
 logoutBtn.addEventListener('click', async () => {
