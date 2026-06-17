@@ -29,7 +29,7 @@ export async function getSession() {
 export async function requireSession() {
   const session = await getSession();
   if (!session) {
-    window.location.href = 'login.html';
+    window.location.href = 'static/login.html';
     return null;
   }
   return session;
@@ -38,7 +38,7 @@ export async function requireSession() {
 export async function redirectIfAuthed() {
   const session = await getSession();
   if (session) {
-    window.location.href = 'index.html';
+    window.location.href = '../index.html';
   }
 }
 
@@ -46,7 +46,7 @@ export async function signInWithOAuth(provider) {
   return supabase.auth.signInWithOAuth({
     provider,
     options: {
-      redirectTo: new URL('index.html', window.location.href).toString(),
+      redirectTo: new URL('../index.html', window.location.href).toString(),
     },
   });
 }

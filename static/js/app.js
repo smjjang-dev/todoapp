@@ -235,7 +235,7 @@ list.addEventListener('dragend', async (event) => {
 
 logoutBtn.addEventListener('click', async () => {
   await signOut();
-  window.location.href = 'login.html';
+  window.location.href = 'static/login.html';
 });
 
 (async function init() {
