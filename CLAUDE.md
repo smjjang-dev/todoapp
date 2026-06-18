@@ -49,8 +49,22 @@ python3 -m http.server 8000
   accent color `#2563eb` 배경 + 흰색 체크리스트 글리프). `generate_icons.py`는 Pillow로
   이 아이콘들을 1회성으로 래스터화한 스크립트로, 런타임 의존성이 아니다(재생성이
   필요할 때만 참고).
-- `static/css/style.css` — 전체 스타일. 완료 항목은 `.completed`로 취소선 처리, 중요도는
+- `static/css/style.css` — 전체 스타일. CSS 커스텀 프로퍼티(`--color-*`)로 라이트/다크
+  테마를 분리한다 — `:root`가 라이트 기본값, `html[data-theme="dark"]`가 다크 오버라이드.
+  우선순위 배지(`.priority-select.priority-{high|medium|low}`)와 OAuth 브랜드 버튼
+  (`.oauth-btn-google`/`.oauth-btn-github`)은 테마 무관하게 고정 색상을 유지한다(전자는
+  의미 색상이라 테마와 무관해야 인식이 일관되고, 후자는 Google/GitHub 브랜드 가이드가
+  고정 배색을 요구). 완료 항목은 `.completed`로 취소선 처리, 중요도는
   `.priority-badge.priority-{high|medium|low}`로 배지 색상 구분.
+- `static/js/theme.js` — 라이트/다크 테마 적용·저장·토글 로직(localStorage 키 `'theme'`):
+  `getPreferredTheme`/`applyTheme`/`setTheme`/`toggleTheme`. `document.documentElement`의
+  `data-theme` 속성(`'light'`/`'dark'`)을 `static/css/style.css`의
+  `html[data-theme="dark"]` CSS 변수 오버라이드와 연결한다. `index.html`/
+  `static/login.html`/`static/signup.html` `<head>`의 동기 인라인 스크립트(FOUC 방지용,
+  `theme.js`와 별개로 로직이 중복 구현됨 — ES 모듈은 기본 defer라 첫 페인트 전 실행을
+  보장 못하므로)가 페이지 로드 직후 저장된 테마를 먼저 적용하고, 토글 UI
+  (`index.html`의 `#theme-toggle`, "Todo List" 제목 앞 sun/moon 아이콘)는 `app.js`가
+  `theme.js`의 `toggleTheme()`을 import해 연결한다.
 - `static/js/config.js` — Supabase Project URL + publishable(anon) key. anon key는 RLS로
   보호되는 공개 가능한 값이라 커밋해도 안전하다.
 - `static/js/supabaseClient.js` — `https://esm.sh/@supabase/supabase-js@2`에서
@@ -81,6 +95,10 @@ python3 -m http.server 8000
     이벤트로 `updatePriority(id, priority)`가 `todo_todos.priority`를 update한 뒤
     `refresh()`로 다시 그린다(생성 시 폼의 우선순위 select와 별개로, 기존 항목도 언제든
     재분류 가능).
+  - 로그아웃 버튼(`#logout-btn`)과 추가 버튼(`#todo-form button`)은 텍스트 대신
+    `delete-btn`과 동일한 패턴(`innerHTML`로 feather-style SVG 주입)으로 채워지는
+    아이콘 버튼이다. 다크모드 토글(`#theme-toggle`)은 `static/js/theme.js`의
+    `toggleTheme()`을 호출하고 결과에 맞춰 `aria-pressed`를 동기화한다.
 - `tests/todoLogic.test.js`, `tests/validators.test.js` — 루트의 `tests/`에 그대로 둔다
   (이동 안 함). Node 내장 테스트 러너(`node --test`)로 `../static/js/todoLogic.js`/
   `../static/js/validators.js`만 검증. `app.js`/`auth.js`는 Supabase·DOM 의존이라
@@ -196,6 +214,56 @@ Supabase 대시보드 Authentication → Providers → Email에서 "Confirm emai
    `user_name` 대응 트리거도 함께 적용할 것. Kakao는 추후 동일 패턴(Provider 활성화 +
    버튼 추가)으로 확장 가능.
 
+## Android APK 패키징 (TWA)
+
+웹 코드를 전혀 바꾸지 않고, 배포된 PWA(`https://smjjang-dev.github.io/todoapp/`)를 그대로
+띄우는 TWA(Trusted Web Activity) 방식으로 `todoApp.apk`를 빌드해 저장소 루트에 포함해
+두었다. 패키징 도구는 Google 공식 [Bubblewrap](https://github.com/GoogleChromeLabs/bubblewrap)
+CLI(`@bubblewrap/cli`).
+
+- `todoApp.apk` — 서명된 설치형 APK. 패키지명 `io.github.smjjang_dev.twa`(호스트
+  `smjjang-dev.github.io`에서 Bubblewrap이 자동 생성), 사이드로드(직접 설치) 전용이다.
+- `todoApp.keystore` / `todoApp.keystore-password.txt` — APK 서명에 쓴 키스토어와
+  평문 비밀번호. **`.gitignore`로 git에서 제외**되어 있다(서명 키 유출 방지). 같은
+  패키지명으로 업데이트 버전을 다시 서명하려면 이 키스토어가 반드시 필요하므로
+  로컬에서 안전하게 백업해 둘 것 — 분실하면 같은 `applicationId`로는 더 이상
+  업데이트 서명이 불가능하다.
+
+### 빌드 전 알아둘 점
+
+- 라이브 사이트가 `manifest.json`/`sw.js`를 서빙하지 않으면(PWA 코드 재배포 전 상태)
+  Bubblewrap이 PWA로 인식하지 못한다. APK를 다시 빌드하기 전에 항상 먼저
+  `curl -sI https://smjjang-dev.github.io/todoapp/manifest.json`로 200을 확인할 것
+  (배포 절차의 3~4단계가 선행되어야 함).
+- **Bubblewrap CLI의 대화형 JDK 자동설치 기능에 실제 버그가 있다**: `bubblewrap init`/
+  `--version` 최초 실행 시 JDK 17 소스 zip(~190MB, OpenJDK 소스 트리)을 다운로드해
+  압축 해제하는 단계에서, 내부적으로 쓰는 `extract-zip` 라이브러리가 대용량/다수
+  엔트리 zip을 처리하다가 에러 없이 프로세스를 조용히 종료시켜 버린다(일부만
+  풀린 채 exit code 0으로 끝남). `yes |` 같은 stdin 자동응답으로도 해결되지 않는다.
+  → 이 환경에서는 JDK 바이너리(Temurin 17, `tar.gz`)와 Android
+  `commandlinetools-linux` zip을 **직접 `curl`로 받아 시스템 `tar`/Python
+  `zipfile`로 압축 해제**하고, `~/.bubblewrap/config.json`에 `jdkPath`/
+  `androidSdkPath`를 직접 써 넣어 자동설치 단계 자체를 우회했다(JDK/Android SDK는
+  `~/.bubblewrap/` 아래, 저장소 밖에 머신별로 설치됨 — 새 머신에서는 다시 받아야 함).
+- TWA 프로젝트 생성·키스토어 생성도 대화형 prompt(`bubblewrap init`)를 거치지 않고,
+  `@bubblewrap/core`가 제공하는 `TwaManifest.fromWebManifest()` /
+  `TwaGenerator.createTwaProject()` / `KeyTool.createSigningKey()`를 Node 스크립트로
+  직접 호출해 비대화식으로 생성했다.
+- 마지막 `gradlew assembleRelease` → `zipalign` 검증 → `apksigner sign`은
+  `bubblewrap build`가 하는 것과 동일한 단계를 그대로 따라했다(빌드 자체는 표준
+  Android Gradle 빌드라 별다른 우회가 필요 없었다).
+
+### 알려진 한계
+
+- 자체 서명 키라 Play 스토어 업로드는 불가능하고, "출처를 알 수 없는 앱 설치"를
+  허용해 사이드로드해야 한다.
+- Digital Asset Links(`assetlinks.json`)를 설정하지 않아 앱 실행 시 상단에 주소창이
+  보인다(완전 standalone TWA가 아님). 설정하려면 `smjjang-dev.github.io` 계정 루트
+  Pages 저장소(`todoapp` 저장소가 아님)에 `.well-known/assetlinks.json`을 올려야
+  한다 — 이번 작업 범위 밖.
+- 실제 Android 기기 설치 테스트는 하지 않았다(개발 환경에 기기 없음) — 배포 전
+  실기기 또는 에뮬레이터에서 설치·실행 확인 필요.
+
 ## 주의사항
 
 - 모듈(`import`/`export`)은 ESM CDN(`esm.sh`)으로만 사용하고, npm/번들러 설정을 추가하지
@@ -219,3 +287,14 @@ Supabase 대시보드 Authentication → Providers → Email에서 "Confirm emai
   `signInWithOAuth()`는 `'../index.html'`). 파일을 추가로 옮길 때 이 비대칭을 깨지
   말 것 — 항상 "이 코드가 실제로 어느 페이지에서 실행되는가" 기준으로 상대경로를
   계산해야 한다.
+- 정적 자산(`static/css/style.css`, `static/js/*.js`, `index.html` 등)을 추가/변경할 때는
+  `sw.js`의 `SHELL_ASSETS`에도 반영하고 `CACHE_VERSION` 문자열을 올릴 것 — 안 올리면
+  PWA로 설치된 기존 사용자에게 cache-first 정책 때문에 변경 사항이 전달되지 않는다.
+- 다크모드 적용 시 `<head>`의 FOUC 방지 인라인 스크립트(비-module, 동기)는
+  `localStorage`의 `'theme'` 키를 `static/js/theme.js`와 동일하게 참조해야 한다 —
+  3개 HTML(`index.html`/`static/login.html`/`static/signup.html`) 모두에 들어가야
+  로그인/회원가입 페이지 진입 시에도 깜빡임 없이 저장된 테마가 유지된다.
+- `manifest.json`의 `theme_color`/`background_color`와 각 HTML의
+  `<meta name="theme-color">`는 다크모드와 무관하게 정적으로 고정되어 있다(브라우저
+  크롬/스플래시 색상이라 런타임 동적 변경이 PWA 표준상 제한적) — 이번 다크모드
+  작업 범위에 포함하지 않았다.
