@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Todo List — 개발 문서 (CLAUDE.md)</title>
+<style>
+  :root {
+    --bg: #0f1115;
+    --bg-elevated: #161922;
+    --bg-card: #1b1f2a;
+    --border: #2a2f3c;
+    --text: #e6e8ee;
+    --text-dim: #9aa3b2;
+    --accent: #2563eb;
+    --accent-soft: rgba(37, 99, 235, 0.15);
+    --code-bg: #11141a;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Pretendard, Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.65;
+  }
+  .docbar {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    background: var(--bg-elevated);
+    border-bottom: 1px solid var(--border);
+    padding: 10px 20px;
+    font-size: 13px;
+  }
+  .docbar .label {
+    color: #5b6272;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-right: 6px;
+  }
+  .docbar a {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--text-dim);
+    text-decoration: none;
+    padding: 5px 11px;
+    border-radius: 6px;
+    border: 1px solid transparent;
+  }
+  .docbar a:hover { color: var(--text); border-color: var(--border); }
+  .docbar a.current {
+    background: var(--accent-soft);
+    color: #93b4fb;
+    border-color: rgba(37,99,235,0.35);
+  }
+  .layout {
+    display: grid;
+    grid-template-columns: 260px 1fr;
+    min-height: 100vh;
+  }
+  nav {
+    position: sticky;
+    top: 0;
+    align-self: start;
+    height: calc(100vh - 41px);
+    overflow-y: auto;
+    background: var(--bg-elevated);
+    border-right: 1px solid var(--border);
+    padding: 28px 20px;
+  }
+  nav .brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 24px;
+  }
+  nav .brand .dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 3px;
+    background: var(--accent);
+  }
+  nav .brand span { font-weight: 600; font-size: 15px; letter-spacing: -0.01em; }
+  nav a {
+    display: block;
+    color: var(--text-dim);
+    text-decoration: none;
+    font-size: 13.5px;
+    padding: 7px 10px;
+    border-radius: 6px;
+    margin-bottom: 2px;
+    transition: background 0.15s, color 0.15s;
+  }
+  nav a.sub { padding-left: 22px; font-size: 13px; }
+  nav a:hover { background: var(--bg-card); color: var(--text); }
+  nav a.active { background: var(--accent-soft); color: #93b4fb; }
+  main { padding: 56px 64px 100px; max-width: 900px; }
+  h1 { font-size: 30px; margin: 0 0 8px; letter-spacing: -0.02em; }
+  .lead { color: var(--text-dim); font-size: 16px; margin-bottom: 36px; }
+  section { margin-bottom: 48px; scroll-margin-top: 24px; }
+  h2 {
+    font-size: 21px;
+    margin: 0 0 16px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border);
+    letter-spacing: -0.01em;
+  }
+  h3 { font-size: 16px; margin: 26px 0 10px; color: #cdd3e0; }
+  p { color: #c4cad8; margin: 10px 0; }
+  ul, ol { color: #c4cad8; padding-left: 22px; }
+  li { margin: 6px 0; }
+  a { color: #6ea0ff; }
+  code {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: "SF Mono", Menlo, Consolas, monospace;
+    font-size: 0.88em;
+    color: #ffb86c;
+  }
+  pre.codeblock {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px 18px;
+    overflow-x: auto;
+    margin: 14px 0;
+  }
+  pre.codeblock code {
+    background: none;
+    border: none;
+    padding: 0;
+    color: #cdd6f4;
+    font-size: 12.5px;
+    line-height: 1.6;
+  }
+  .lang-tag {
+    display: inline-block;
+    font-size: 10.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #5b6272;
+    margin-bottom: 8px;
+  }
+  .file-entry {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px 18px;
+    margin: 12px 0;
+  }
+  .file-entry .path { font-family: monospace; color: #93b4fb; font-size: 13.5px; font-weight: 600; }
+  .file-entry p { margin: 8px 0 0; font-size: 13.5px; }
+  .note {
+    background: var(--accent-soft);
+    border: 1px solid rgba(37,99,235,0.35);
+    border-radius: 8px;
+    padding: 12px 16px;
+    font-size: 13.5px;
+    color: #cdd3e0;
+    margin: 14px 0;
+  }
+  .warn {
+    background: rgba(234, 88, 12, 0.12);
+    border: 1px solid rgba(234, 88, 12, 0.35);
+    border-radius: 8px;
+    padding: 12px 16px;
+    font-size: 13.5px;
+    color: #f0c9ab;
+    margin: 14px 0;
+  }
+  footer {
+    border-top: 1px solid var(--border);
+    margin-top: 60px;
+    padding-top: 24px;
+    color: #5b6272;
+    font-size: 13px;
+  }
+  footer a { color: #6ea0ff; }
+  ::-webkit-scrollbar { width: 10px; }
+  ::-webkit-scrollbar-thumb { background: #2a2f3c; border-radius: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  @media (max-width: 760px) {
+    .layout { grid-template-columns: 1fr; }
+    nav { position: static; height: auto; border-right: none; border-bottom: 1px solid var(--border); }
+    main { padding: 32px 22px 80px; }
+  }
+</style>
+</head>
+<body>
+<div class="docbar">
+  <span class="label">문서</span>
+  <a href="README.html">📄 README</a>
+  <a href="CLAUDE.html" class="current">🔧 CLAUDE.md (개발 문서)</a>
+  <a href="auth.html">🔐 auth.md (OAuth 설정)</a>
+</div>
+<div class="layout">
+  <nav id="sidenav">
+    <div class="brand"><span class="dot"></span><span>개발 문서</span></div>
+    <a href="#overview">프로젝트 개요</a>
+    <a href="#run">실행 방법</a>
+    <a href="#structure">파일 구조</a>
+    <a href="#test">테스트</a>
+    <a href="#schema">Supabase 스키마</a>
+    <a href="#deploy">배포 절차</a>
+    <a href="#apk">Android APK 패키징 (TWA)</a>
+    <a href="#apk-before" class="sub">빌드 전 알아둘 점</a>
+    <a href="#apk-limits" class="sub">알려진 한계</a>
+    <a href="#notes">주의사항</a>
+  </nav>
+
+  <main>
+    <h1 id="overview">CLAUDE.md — 개발 문서</h1>
+    <p class="lead">Claude Code(claude.ai/code)가 이 저장소에서 작업할 때 참고하는 가이드입니다.</p>
+
+    <section>
+      <h2>프로젝트 개요</h2>
+      <p>Supabase(Postgres + Auth) 기반 멀티유저 Todo List 앱. 이메일/비밀번호로
+        회원가입·로그인하면 사용자별로 자신의 할 일만 보이며(RLS로 격리), 항목마다
+        중요도(상/중/하)와 완료 시점을 기록한다.</p>
+      <p>빌드 도구와 npm 의존성 설치는 여전히 없지만(<code>&lt;script type="module"&gt;</code> + ESM CDN
+        import만 사용), ES 모듈과 Supabase 네트워크 호출이 필요하므로 더 이상 <code>file://</code>로
+        직접 열어서는 동작하지 않고 HTTP(S) 서버로 서빙해야 한다. 안드로이드 등에서 홈 화면에
+        설치해 standalone 앱처럼 쓸 수 있는 PWA(Web App Manifest + Service Worker)이기도 하다.</p>
+    </section>
+
+    <section id="run">
+      <h2>실행 방법</h2>
+      <pre class="codeblock"><span class="lang-tag">bash</span>
+<code># 정적 서버로 띄운다 (file://로는 ES 모듈/네트워크 호출이 막혀 동작하지 않는다)
+python3 -m http.server 8000
+# 이후 http://localhost:8000 접속 → 로그인 안 된 상태면 static/login.html로 리다이렉트</code></pre>
+      <p><code>static/js/config.js</code>에 본인 Supabase 프로젝트의 Project URL과
+        publishable(anon) key가 채워져 있어야 한다.</p>
+    </section>
+
+    <section id="structure">
+      <h2>파일 구조</h2>
+      <p><code>index.html</code>/<code>manifest.json</code>/<code>sw.js</code>만 저장소 루트에 두고,
+        서빙 대상 정적 자산(<code>login.html</code>/<code>signup.html</code>/<code>css/</code>/<code>js/</code>/<code>icons/</code>)은
+        모두 <code>static/</code> 아래에 모아둔다(루트는 PWA 진입점 + 문서/설정 파일만 남도록).</p>
+
+      <div class="file-entry">
+        <div class="path">index.html</div>
+        <p>메인 Todo 화면(루트). <code>static/css/style.css</code>/<code>static/js/app.js</code>를
+          참조하고, <code>manifest.json</code>(<code>rel="manifest"</code>)과 <code>sw.js</code> 등록
+          인라인 스크립트를 포함한다. 비로그인 상태면 <code>static/js/auth.js</code>의
+          <code>requireSession()</code>이 <code>static/login.html</code>로 리다이렉트한다.</p>
+      </div>
+
+      <div class="file-entry">
+        <div class="path">static/login.html / static/signup.html</div>
+        <p>이메일/비밀번호(+회원가입 시 닉네임) 폼. 이미 로그인된 상태면
+          <code>redirectIfAuthed()</code>가 (한 단계 위인) 루트의 <code>index.html</code>로
+          보낸다. <code>index.html</code>과 마찬가지로 (상대경로만 다른) manifest link/Service Worker
+          등록 스크립트를 포함한다.</p>
+      </div>
+
+      <div class="file-entry">
+        <div class="path">manifest.json</div>
+        <p>Web App Manifest. <code>start_url</code>/<code>scope</code>를 절대경로(<code>/</code>)가
+          아니라 상대경로(<code>.</code>)로 둔다 — 배포 URL이 루트 도메인이 아니라
+          <code>https://smjjang-dev.github.io/todoapp/</code>처럼 서브패스이기 때문. 아이콘은
+          <code>static/icons/</code>를 참조한다.</p>
+      </div>
+
+      <div class="file-entry">
+        <div class="path">sw.js</div>
+        <p>Service Worker(루트). 정적 셸(HTML/CSS/JS/manifest/아이콘)만 cache-first로 캐싱하고,
+          <code>supabase.co</code>/<code>esm.sh</code> 요청은 캐싱하지 않고 항상 네트워크로
+          통과시킨다(인증/데이터는 항상 최신이어야 함). 캐시 이름(<code>CACHE_VERSION</code>)에
+          버전 문자열을 두고 배포 때마다 올려서 갱신하며, <code>skipWaiting()</code>/<code>clients.claim()</code>으로
+          새 버전이 바로 적용되게 한다.</p>
+      </div>
+
+      <div class="file-entry">
+        <div class="path">static/icons/</div>
+        <p>PWA 아이콘(<code>icon-192.png</code>/<code>icon-512.png</code>/<code>icon-512-maskable.png</code>,
+          accent color <code>#2563eb</code> 배경 + 흰색 체크리스트 글리프). <code>generate_icons.py</code>는
+          Pillow로 이 아이콘들을 1회성으로 래스터화한 스크립트로, 런타임 의존성이 아니다
+          (재생성이 필요할 때만 참고).</p>
+      </div>
+
+      <div class="file-entry">
+        <div class="path">static/css/style.css</div>
+        <p>전체 스타일. 완료 항목은 <code>.completed</code>로 취소선 처리, 중요도는
+          <code>.priority-badge.priority-{high|medium|low}</code>로 배지 색상 구분.</p>
+      </div>
+
+      <div class="file-entry">
+        <div class="path">static/js/config.js</div>
+        <p>Supabase Project URL + publishable(anon) key. anon key는 RLS로 보호되는 공개
+          가능한 값이라 커밋해도 안전하다.</p>
+      </div>
+
+      <div class="file-entry">
+        <div class="path">static/js/supabaseClient.js</div>
+        <p><code>https://esm.sh/@supabase/supabase-js@2</code>에서 <code>createClient</code>를
+          ESM CDN import해 공유 <code>supabase</code> client를 생성·export.</p>
+      </div>
+
+      <div class="file-entry">
+        <div class="path">static/js/todoLogic.js</div>
+        <p>순수 함수(Supabase/DOM 비의존, 단위테스트 대상): <code>PRIORITY_LABELS</code>,
+          <code>isValidPriority</code>, <code>priorityLabel</code>, <code>nextPosition</code>,
+          <code>reorderByIds</code>, <code>withCompletionToggle</code>.</p>
+      </div>
+
+      <div class="file-entry">
+        <div class="path">static/js/validators.js</div>
+        <p>순수 함수(단위테스트 대상): <code>isValidEmail</code>, <code>isValidPassword</code>,
+          <code>isValidNickname</code>.</p>
+      </div>
+
+      <div class="file-entry">
+        <div class="path">static/js/auth.js</div>
+        <p><code>signUp</code>/<code>signIn</code>/<code>signOut</code>/<code>getSession</code>/
+          <code>requireSession</code>/<code>redirectIfAuthed</code>/<code>signInWithOAuth</code>.
+          <code>signInWithOAuth(provider)</code>는 <code>redirectTo</code>를 루트의
+          <code>index.html</code>로 고정해 호출하며, <code>static/login.html</code>/<code>static/signup.html</code>의
+          "Google로 계속하기"/"GitHub로 계속하기" 버튼이 각각 <code>'google'</code>/<code>'github'</code>로
+          호출한다(실제 로그인은 Supabase 대시보드에서 해당 Provider를 활성화해야 동작 —
+          자세한 설정 절차는 <a href="auth.html">auth.md</a> 참고).</p>
+      </div>
+
+      <div class="file-entry">
+        <div class="path">static/js/app.js</div>
+        <p>Supabase 쿼리(<code>todo_todos</code>/<code>todo_profiles</code>)와 DOM 렌더링
+          오케스트레이션. <code>loadTodos</code>/<code>saveTodos</code>(localStorage)는 더 이상
+          없고 <code>fetchTodos</code>/<code>addTodo</code>/<code>toggleTodo</code>/<code>updatePriority</code>/
+          <code>deleteTodo</code>/<code>persistOrder</code>가 그 자리를 대신한다. 모든 변경
+          핸들러는 <code>async</code>이며, 변경 후 항상 <code>fetchTodos()</code> + <code>render()</code>로
+          서버 상태를 다시 그린다(로컬 상태를 직접 패치하지 않음).</p>
+        <p>순서 변경은 <code>https://esm.sh/sortablejs</code>에서 ESM CDN import한
+          <code>Sortable</code>로 구현한다(<code>Sortable.create(list, { handle: '.drag-handle', animation: 150, onEnd: ... })</code>).
+          네이티브 HTML5 Drag and Drop API(<code>draggable</code> 토글 + <code>dragstart</code>/<code>dragover</code>/<code>dragend</code>)는
+          안드로이드 터치 브라우저에서 동작하지 않아 SortableJS로 교체했다 —
+          <code>handle</code> 옵션이 "핸들로만 드래그 시작" 규칙을 마우스/터치 모두에서
+          보장하므로 <code>draggable=true/false</code> 수동 토글은 더 이상 없다. <code>onEnd</code>에서
+          <code>persistOrder()</code>가 <code>todoLogic.reorderByIds()</code> 결과로
+          <code>todo_todos.position</code>을 일괄 update한다.</p>
+        <p>중요도는 각 항목의 <code>.priority-select</code>(<code>&lt;select&gt;</code>)로 즉시
+          변경 가능하다. <code>change</code> 이벤트로 <code>updatePriority(id, priority)</code>가
+          <code>todo_todos.priority</code>를 update한 뒤 <code>refresh()</code>로 다시 그린다
+          (생성 시 폼의 우선순위 select와 별개로, 기존 항목도 언제든 재분류 가능).</p>
+      </div>
+
+      <div class="file-entry">
+        <div class="path">tests/todoLogic.test.js, tests/validators.test.js</div>
+        <p>루트의 <code>tests/</code>에 그대로 둔다(이동 안 함). Node 내장 테스트 러너
+          (<code>node --test</code>)로 <code>../static/js/todoLogic.js</code>/<code>../static/js/validators.js</code>만
+          검증. <code>app.js</code>/<code>auth.js</code>는 Supabase·DOM 의존이라 단위테스트
+          대상에서 제외하고 브라우저 수동 검증으로 커버한다.</p>
+      </div>
+
+      <div class="file-entry">
+        <div class="path">package.json</div>
+        <p><code>{ "scripts": { "test": "node --test" } }</code>만 있는 최소 구성. 번들러나
+          설치가 필요한 의존성은 없다.</p>
+      </div>
+    </section>
+
+    <section id="test">
+      <h2>테스트</h2>
+      <pre class="codeblock"><span class="lang-tag">bash</span>
+<code>npm test
+# 또는
+node --test</code></pre>
+    </section>
+
+    <section id="schema">
+      <h2>Supabase 스키마</h2>
+      <p>테이블은 모두 <code>todo_</code> 접두어를 쓴다(같은 프로젝트를 다른 용도로 재사용할
+        가능성 대비).</p>
+
+      <pre class="codeblock"><span class="lang-tag">sql</span>
+<code>create table todo_profiles (
+  id uuid primary key references auth.users(id) on delete cascade,
+  nickname text not null,
+  created_at timestamptz not null default now()
+);
+alter table todo_profiles enable row level security;
+create policy "select own profile" on todo_profiles for select using (auth.uid() = id);
+create policy "update own profile" on todo_profiles for update using (auth.uid() = id);
+
+create function public.handle_new_user()
+returns trigger as $$
+begin
+  insert into public.todo_profiles (id, nickname)
+  values (
+    new.id,
+    coalesce(
+      new.raw_user_meta_data->>'nickname',
+      new.raw_user_meta_data->>'full_name',
+      new.raw_user_meta_data->>'name',
+      split_part(new.email, '@', 1)
+    )
+  );
+  return new;
+end;
+$$ language plpgsql security definer;
+
+create trigger on_auth_user_created
+  after insert on auth.users
+  for each row execute procedure public.handle_new_user();</code></pre>
+
+      <div class="note">
+        GitHub OAuth로 가입한 사용자가 GitHub 프로필에 "Name"을 설정하지 않은 경우
+        <code>full_name</code>/<code>name</code>이 비어있고 <code>user_name</code>(GitHub 아이디)만
+        채워지므로, <code>coalesce</code>에 <code>user_name</code>을 추가해야 닉네임이 이메일
+        앞부분으로 떨어지지 않는다(Supabase SQL 에디터에서 <code>create or replace function</code>으로
+        갱신). 이 갱신은 <a href="auth.html#step1">auth.md의 1번 항목</a>에서 이미 적용 완료된
+        상태다.
+      </div>
+
+      <pre class="codeblock"><span class="lang-tag">sql</span>
+<code>create or replace function public.handle_new_user()
+returns trigger as $$
+begin
+  insert into public.todo_profiles (id, nickname)
+  values (
+    new.id,
+    coalesce(
+      new.raw_user_meta_data->>'nickname',
+      new.raw_user_meta_data->>'full_name',
+      new.raw_user_meta_data->>'name',
+      new.raw_user_meta_data->>'user_name',
+      split_part(new.email, '@', 1)
+    )
+  );
+  return new;
+end;
+$$ language plpgsql security definer;</code></pre>
+
+      <pre class="codeblock"><span class="lang-tag">sql</span>
+<code>create table todo_todos (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade default auth.uid(),
+  text text not null,
+  completed boolean not null default false,
+  completed_at timestamptz,
+  priority text not null default 'medium' check (priority in ('high', 'medium', 'low')),
+  position integer not null default 0,
+  created_at timestamptz not null default now()
+);
+alter table todo_todos enable row level security;
+create policy "owner full access" on todo_todos
+  for all using (auth.uid() = user_id) with check (auth.uid() = user_id);</code></pre>
+
+      <p>Supabase 대시보드 Authentication → Providers → Email에서 "Confirm email"을
+        꺼두면 메일 발송 설정 없이 바로 가입·로그인할 수 있다(연습 환경 기준 권장).</p>
+    </section>
+
+    <section id="deploy">
+      <h2>배포 절차</h2>
+      <ol>
+        <li>Supabase 프로젝트 생성 → 위 SQL 실행 → "Confirm email" 끄기</li>
+        <li><code>static/js/config.js</code>에 Project URL/publishable key 채워넣고 로컬
+          (<code>python3 -m http.server</code>, 루트에서 실행)에서 회원가입 → 로그인 → 할 일
+          추가(우선순위 포함) → 완료 토글 → 순서 변경 → 로그아웃까지 수동 검증</li>
+        <li><code>smjjang-dev/todoapp</code> 저장소를 새로 클론, 이 폴더의 파일들을 복사해
+          커밋/푸시(<code>index.html</code>/<code>manifest.json</code>/<code>sw.js</code>/<code>package.json</code>은
+          저장소 루트로, <code>static/</code>(아이콘 포함)은 통째로 그대로 복사)</li>
+        <li>그 저장소 Settings → Pages에서 <code>main</code> 브랜치 루트로 배포 활성화 후 배포
+          URL에서 동일 시나리오 재검증(<code>index.html</code>이 루트에 있으므로 배포 URL은
+          그대로 <code>https://smjjang-dev.github.io/todoapp/</code>)</li>
+        <li>Google/GitHub 소셜 로그인은 코드상 구현 완료(<code>static/login.html</code>/<code>static/signup.html</code>의
+          버튼, <code>static/js/auth.js</code>의 <code>redirectTo</code>). 실제 동작하려면 Supabase
+          대시보드 Authentication → Providers에서 Google/GitHub를 각각 활성화하고(Google
+          Cloud Console/GitHub OAuth App에서 발급한 Client ID/Secret 입력), Authentication →
+          URL Configuration → Redirect URLs에 <code>.../index.html</code> 형태로 로컬·배포 URL을
+          등록해야 한다. 위 SQL의 <code>user_name</code> 대응 트리거도 함께 적용할 것. Kakao는
+          추후 동일 패턴(Provider 활성화 + 버튼 추가)으로 확장 가능.
+          상세 진행 기록은 <a href="auth.html">auth.md</a> 참고(완료됨).</li>
+      </ol>
+    </section>
+
+    <section id="apk">
+      <h2>Android APK 패키징 (TWA)</h2>
+      <p>웹 코드를 전혀 바꾸지 않고, 배포된 PWA(<code>https://smjjang-dev.github.io/todoapp/</code>)를
+        그대로 띄우는 TWA(Trusted Web Activity) 방식으로 <code>todoApp.apk</code>를 빌드해
+        저장소 루트에 포함해 두었다. 패키징 도구는 Google 공식
+        <a href="https://github.com/GoogleChromeLabs/bubblewrap" target="_blank" rel="noopener">Bubblewrap</a>
+        CLI(<code>@bubblewrap/cli</code>).</p>
+
+      <div class="file-entry">
+        <div class="path">todoApp.apk</div>
+        <p>서명된 설치형 APK. 패키지명 <code>io.github.smjjang_dev.twa</code>(호스트
+          <code>smjjang-dev.github.io</code>에서 Bubblewrap이 자동 생성), 사이드로드(직접
+          설치) 전용이다.</p>
+      </div>
+      <div class="file-entry">
+        <div class="path">todoApp.keystore / todoApp.keystore-password.txt</div>
+        <p>APK 서명에 쓴 키스토어와 평문 비밀번호. <strong>.gitignore로 git에서 제외</strong>되어
+          있다(서명 키 유출 방지). 같은 패키지명으로 업데이트 버전을 다시 서명하려면 이
+          키스토어가 반드시 필요하므로 로컬에서 안전하게 백업해 둘 것 — 분실하면 같은
+          <code>applicationId</code>로는 더 이상 업데이트 서명이 불가능하다.</p>
+      </div>
+
+      <h3 id="apk-before">빌드 전 알아둘 점</h3>
+      <ul>
+        <li>라이브 사이트가 <code>manifest.json</code>/<code>sw.js</code>를 서빙하지 않으면(PWA
+          코드 재배포 전 상태) Bubblewrap이 PWA로 인식하지 못한다. APK를 다시 빌드하기 전에
+          항상 먼저 <code>curl -sI https://smjjang-dev.github.io/todoapp/manifest.json</code>로
+          200을 확인할 것(배포 절차의 3~4단계가 선행되어야 함).</li>
+        <li>
+          <div class="warn"><strong>Bubblewrap CLI의 대화형 JDK 자동설치 기능에 실제 버그가
+            있다</strong>: <code>bubblewrap init</code>/<code>--version</code> 최초 실행 시 JDK 17
+            소스 zip(~190MB, OpenJDK 소스 트리)을 다운로드해 압축 해제하는 단계에서, 내부적으로
+            쓰는 <code>extract-zip</code> 라이브러리가 대용량/다수 엔트리 zip을 처리하다가 에러
+            없이 프로세스를 조용히 종료시켜 버린다(일부만 풀린 채 exit code 0으로 끝남).
+            <code>yes |</code> 같은 stdin 자동응답으로도 해결되지 않는다. → 이 환경에서는 JDK
+            바이너리(Temurin 17, <code>tar.gz</code>)와 Android <code>commandlinetools-linux</code> zip을
+            직접 <code>curl</code>로 받아 시스템 <code>tar</code>/Python <code>zipfile</code>로 압축
+            해제하고, <code>~/.bubblewrap/config.json</code>에 <code>jdkPath</code>/<code>androidSdkPath</code>를
+            직접 써 넣어 자동설치 단계 자체를 우회했다(JDK/Android SDK는 <code>~/.bubblewrap/</code>
+            아래, 저장소 밖에 머신별로 설치됨 — 새 머신에서는 다시 받아야 함).</div>
+        </li>
+        <li>TWA 프로젝트 생성·키스토어 생성도 대화형 prompt(<code>bubblewrap init</code>)를
+          거치지 않고, <code>@bubblewrap/core</code>가 제공하는 <code>TwaManifest.fromWebManifest()</code> /
+          <code>TwaGenerator.createTwaProject()</code> / <code>KeyTool.createSigningKey()</code>를
+          Node 스크립트로 직접 호출해 비대화식으로 생성했다.</li>
+        <li>마지막 <code>gradlew assembleRelease</code> → <code>zipalign</code> 검증 →
+          <code>apksigner sign</code>은 <code>bubblewrap build</code>가 하는 것과 동일한 단계를
+          그대로 따라했다(빌드 자체는 표준 Android Gradle 빌드라 별다른 우회가 필요 없었다).</li>
+      </ul>
+
+      <h3 id="apk-limits">알려진 한계</h3>
+      <ul>
+        <li>자체 서명 키라 Play 스토어 업로드는 불가능하고, "출처를 알 수 없는 앱 설치"를
+          허용해 사이드로드해야 한다.</li>
+        <li>Digital Asset Links(<code>assetlinks.json</code>)를 설정하지 않아 앱 실행 시 상단에
+          주소창이 보인다(완전 standalone TWA가 아님). 설정하려면 <code>smjjang-dev.github.io</code>
+          계정 루트 Pages 저장소(<code>todoapp</code> 저장소가 아님)에
+          <code>.well-known/assetlinks.json</code>을 올려야 한다 — 이번 작업 범위 밖.</li>
+        <li>실제 Android 기기 설치 테스트는 하지 않았다(개발 환경에 기기 없음) — 배포 전 실기기
+          또는 에뮬레이터에서 설치·실행 확인 필요.</li>
+      </ul>
+    </section>
+
+    <section id="notes">
+      <h2>주의사항</h2>
+      <ul>
+        <li>모듈(<code>import</code>/<code>export</code>)은 ESM CDN(<code>esm.sh</code>)으로만
+          사용하고, npm/번들러 설정을 추가하지 말 것 — 이 프로젝트는 의도적으로 도구 없는
+          정적 구성을 유지한다.</li>
+        <li>순서 변경에 네이티브 HTML5 Drag and Drop API(<code>draggable</code>/<code>dragstart</code>/<code>dragover</code>)로
+          되돌리지 말 것 — 안드로이드 터치 브라우저에서 전혀 동작하지 않아 SortableJS로
+          교체했다(<code>static/js/app.js</code>의 <code>Sortable.create(list, { handle: '.drag-handle', ... })</code>).
+          <code>handle: '.drag-handle'</code> 옵션을 제거하면 체크박스 클릭이나 텍스트 선택이
+          실수로 드래그를 유발한다.</li>
+        <li><code>app.js</code>의 변경 핸들러에서 로컬 상태를 직접 패치하지 말 것 — 항상
+          <code>fetchTodos()</code>로 서버 값을 다시 가져와 <code>render()</code>한다(네트워크
+          실패/동시성으로 인한 상태 불일치 방지).</li>
+        <li><code>static/js/config.js</code>의 publishable(anon) key는 RLS로 보호되므로 커밋해도
+          안전하지만, 서비스 role key는 절대 클라이언트 코드에 넣지 말 것.</li>
+        <li><code>signInWithOAuth</code>의 <code>redirectTo</code>는 루트의 <code>index.html</code>로
+          고정되어 있다 — 다른 페이지로 바꾸지 말 것(<code>requireSession()</code>이 그 페이지에서
+          정상 동작해야 OAuth 콜백 후 로그인 상태가 올바르게 인식된다). 실제 Provider별 콘솔
+          설정 절차는 <a href="auth.html">auth.md</a> 참고.</li>
+        <li><code>index.html</code>만 루트에 있고 <code>static/js/auth.js</code>·<code>static/js/app.js</code>는
+          루트(<code>index.html</code>)와 <code>static/</code>(<code>login.html</code>/<code>signup.html</code>)
+          양쪽에서 로드되므로, 그 안의 <code>window.location.href</code>/<code>redirectTo</code> 상대경로
+          리터럴이 호출 위치별로 다르다(<code>requireSession()</code>/로그아웃은 <code>'static/login.html'</code>,
+          <code>redirectIfAuthed()</code>/<code>signInWithOAuth()</code>는 <code>'../index.html'</code>).
+          파일을 추가로 옮길 때 이 비대칭을 깨지 말 것 — 항상 "이 코드가 실제로 어느 페이지에서
+          실행되는가" 기준으로 상대경로를 계산해야 한다.</li>
+      </ul>
+    </section>
+
+    <footer>CLAUDE.md 기반으로 생성된 문서 뷰어입니다. ·
+      <a href="README.html">README</a> · <a href="auth.html">auth.md</a></footer>
+  </main>
+</div>
+
+<script>
+  const links = Array.from(document.querySelectorAll('#sidenav a'));
+  const targets = links.map(a => document.querySelector(a.getAttribute('href')));
+  function onScroll() {
+    let activeIdx = 0;
+    targets.forEach((el, i) => {
+      if (el && el.getBoundingClientRect().top - 80 <= 0) activeIdx = i;
+    });
+    links.forEach((a, i) => a.classList.toggle('active', i === activeIdx));
+  }
+  document.addEventListener('scroll', onScroll, { passive: true });
+  onScroll();
+</script>
+</body>
+</html>
