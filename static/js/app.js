@@ -1,4 +1,4 @@
-import Sortable from 'https://esm.sh/sortablejs';
+import Sortable from 'https://esm.sh/sortablejs@1.15.7';
 import { supabase } from './supabaseClient.js';
 import { requireSession, signOut } from './auth.js';
 import { toggleTheme } from './theme.js';
@@ -8,6 +8,10 @@ import {
   reorderByIds,
   withCompletionToggle,
 } from './todoLogic.js';
+
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js');
+}
 
 const form = document.getElementById('todo-form');
 const input = document.getElementById('todo-input');

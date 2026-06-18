@@ -29,22 +29,25 @@ python3 -m http.server 8000
 (루트는 PWA 진입점 + 문서/설정 파일만 남도록).
 
 - `index.html` — 메인 Todo 화면(루트). `static/css/style.css`/`static/js/app.js`를
-  참조하고, `manifest.json`(`rel="manifest"`)과 `sw.js` 등록 인라인 스크립트를
-  포함한다. 비로그인 상태면 `static/js/auth.js`의 `requireSession()`이
-  `static/login.html`로 리다이렉트한다.
+  참조하고, `manifest.json`(`rel="manifest"`)을 포함한다(Service Worker 등록은
+  `static/js/app.js` 안으로 옮겨졌다 — 아래 CSP 관련 설명 참고). 비로그인 상태면
+  `static/js/auth.js`의 `requireSession()`이 `static/login.html`로 리다이렉트한다.
 - `static/login.html` / `static/signup.html` — 이메일/비밀번호(+회원가입 시 닉네임) 폼.
-  이미 로그인된 상태면 `redirectIfAuthed()`가 (한 단계 위인) 루트의 `index.html`로
-  보낸다. `index.html`과 마찬가지로 (상대경로만 다른) manifest link/Service Worker
-  등록 스크립트를 포함한다.
+  본문 로직은 인라인이 아니라 각각 `static/js/loginPage.js`/`static/js/signupPage.js`
+  (외부 모듈)로 분리되어 있다(CSP의 `script-src`를 `'self'`/`https://esm.sh`/FOUC
+  스크립트 해시만으로 좁히기 위한 것 — 인라인 스크립트가 늘어날수록 해시 관리가
+  번거로워지므로 변동성 있는 페이지 로직은 항상 외부 파일로 둔다). 이미 로그인된
+  상태면 `redirectIfAuthed()`가 (한 단계 위인) 루트의 `index.html`로 보낸다. Service
+  Worker 등록도 이 두 파일 안에서 수행한다(`'../sw.js'`).
 - `manifest.json` — Web App Manifest. `start_url`/`scope`를 절대경로(`/`)가 아니라
   상대경로(`.`)로 둔다 — 배포 URL이 루트 도메인이 아니라
   `https://smjjang-dev.github.io/todoapp/`처럼 서브패스이기 때문. 아이콘은
   `static/icons/`를 참조한다.
-- `sw.js` — Service Worker(루트). 정적 셸(HTML/CSS/JS/manifest/아이콘)만 cache-first로
-  캐싱하고, `supabase.co`/`esm.sh` 요청은 캐싱하지 않고 항상 네트워크로 통과시킨다
-  (인증/데이터는 항상 최신이어야 함). 캐시 이름(`CACHE_VERSION`)에 버전 문자열을 두고
-  배포 때마다 올려서 갱신하며, `skipWaiting()`/`clients.claim()`으로 새 버전이 바로
-  적용되게 한다.
+- `sw.js` — Service Worker(루트). 정적 셸(HTML/CSS/JS/manifest/아이콘, `SHELL_ASSETS`에
+  `static/js/loginPage.js`/`static/js/signupPage.js`도 포함)만 cache-first로 캐싱하고,
+  `supabase.co`/`esm.sh` 요청은 캐싱하지 않고 항상 네트워크로 통과시킨다(인증/데이터는
+  항상 최신이어야 함). 캐시 이름(`CACHE_VERSION`)에 버전 문자열을 두고 배포 때마다
+  올려서 갱신하며, `skipWaiting()`/`clients.claim()`으로 새 버전이 바로 적용되게 한다.
 - `static/icons/` — PWA 아이콘(`icon-192.png`/`icon-512.png`/`icon-512-maskable.png`,
   accent color `#2563eb` 배경 + 흰색 체크리스트 글리프). `generate_icons.py`는 Pillow로
   이 아이콘들을 1회성으로 래스터화한 스크립트로, 런타임 의존성이 아니다(재생성이
@@ -67,24 +70,42 @@ python3 -m http.server 8000
   `theme.js`의 `toggleTheme()`을 import해 연결한다.
 - `static/js/config.js` — Supabase Project URL + publishable(anon) key. anon key는 RLS로
   보호되는 공개 가능한 값이라 커밋해도 안전하다.
-- `static/js/supabaseClient.js` — `https://esm.sh/@supabase/supabase-js@2`에서
-  `createClient`를 ESM CDN import해 공유 `supabase` client를 생성·export.
+- `static/js/supabaseClient.js` — `https://esm.sh/@supabase/supabase-js@2.108.2`에서
+  `createClient`를 ESM CDN import해 공유 `supabase` client를 생성·export. 버전을
+  메이저(`@2`)만이 아니라 정확한 패치 버전까지 고정한다 — esm.sh/upstream 침해 시
+  자동으로 변조된 latest를 받아오는 공급망 위험을 줄이기 위함(`CVE.md` 1번 항목
+  대응). 버전을 올릴 때는 의도적으로 직접 숫자를 바꿔야 한다.
 - `static/js/todoLogic.js` — 순수 함수(Supabase/DOM 비의존, 단위테스트 대상):
   `PRIORITY_LABELS`, `isValidPriority`, `priorityLabel`, `nextPosition`,
   `reorderByIds`, `withCompletionToggle`.
 - `static/js/validators.js` — 순수 함수(단위테스트 대상): `isValidEmail`, `isValidPassword`,
-  `isValidNickname`.
+  `isValidNickname`. `isValidPassword`는 8자 이상 + 영문/숫자 혼합을 요구한다(과거 6자
+  이상만 보던 정책에서 강화 — `CVE.md` 3번 항목 대응).
 - `static/js/auth.js` — `signUp`/`signIn`/`signOut`/`getSession`/`requireSession`/
   `redirectIfAuthed`/`signInWithOAuth`. `signInWithOAuth(provider)`는 `redirectTo`를
   루트의 `index.html`로 고정해 호출하며, `static/login.html`/`static/signup.html`의
   "Google로 계속하기"/"GitHub로 계속하기" 버튼이 각각 `'google'`/`'github'`로
   호출한다(실제 로그인은 Supabase 대시보드에서 해당 Provider를 활성화해야 동작).
+  `signUp`이 던지는 클라이언트 검증 에러(이메일 형식/비밀번호 정책/닉네임)는 화면에
+  그대로 노출해도 안전하지만(서버 응답이 아니므로 계정 열거에 쓰이지 않음), Supabase가
+  반환하는 `error.message`(로그인/회원가입/OAuth 실패) 자체는 호출부
+  (`static/js/loginPage.js`/`static/js/signupPage.js`)에서 일반화된 한국어 메시지로
+  치환해서 보여준다 — 원본 메시지를 그대로 노출하면 계정 열거(account enumeration)에
+  악용될 수 있다(`CVE.md` 2번 항목 대응).
+- `static/js/loginPage.js` / `static/js/signupPage.js` — `static/login.html`/
+  `static/signup.html`의 폼 제출·OAuth 버튼·Service Worker 등록을 담당하는 외부
+  모듈(과거에는 각 HTML에 인라인 `<script type="module">`로 들어있었음 — CSP
+  `script-src`에 해시를 추가할 때마다 늘어나는 걸 피하려고 분리했다).
 - `static/js/app.js` — Supabase 쿼리(`todo_todos`/`todo_profiles`)와 DOM 렌더링 오케스트레이션.
   `loadTodos`/`saveTodos`(localStorage)는 더 이상 없고 `fetchTodos`/`addTodo`/`toggleTodo`/
   `updatePriority`/`deleteTodo`/`persistOrder`가 그 자리를 대신한다. 모든 변경 핸들러는
   `async`이며, 변경 후 항상 `fetchTodos()` + `render()`로 서버 상태를 다시 그린다(로컬
   상태를 직접 패치하지 않음).
-  - 순서 변경은 `https://esm.sh/sortablejs`에서 ESM CDN import한 `Sortable`로 구현한다
+  - Service Worker 등록(`navigator.serviceWorker.register('sw.js')`)도 파일 맨 위에서
+    수행한다(과거에는 `index.html`의 별도 인라인 `<script>`였음 — CSP 도입으로 인라인
+    스크립트를 줄이려고 옮겼다).
+  - 순서 변경은 `https://esm.sh/sortablejs@1.15.7`에서 ESM CDN import한 `Sortable`로
+    구현한다(버전을 정확히 고정 — 공급망 위험 감소, `CVE.md` 1번 항목 대응)
     (`Sortable.create(list, { handle: '.drag-handle', animation: 150, onEnd: ... })`).
     네이티브 HTML5 Drag and Drop API(`draggable` 토글 + `dragstart`/`dragover`/`dragend`)는
     안드로이드 터치 브라우저에서 동작하지 않아 SortableJS로 교체했다 — `handle`
@@ -105,6 +126,49 @@ python3 -m http.server 8000
   단위테스트 대상에서 제외하고 브라우저 수동 검증으로 커버한다.
 - `package.json` — `{ "scripts": { "test": "node --test" } }`만 있는 최소 구성. 번들러나
   설치가 필요한 의존성은 없다.
+
+## CSP(Content-Security-Policy)
+
+`index.html`/`static/login.html`/`static/signup.html` `<head>`에 모두 동일한
+`<meta http-equiv="Content-Security-Policy" ...>`가 들어있다(`CVE.md` 4번 항목 대응).
+
+```
+default-src 'self';
+script-src 'self' https://esm.sh 'sha256-qrm+vxc1woHc8ZhJWHNUk0eS0Z4RC1I/j4n/y6HTL9A=';
+style-src 'self';
+img-src 'self';
+connect-src 'self' https://mkwodsholwmsgazddrqp.supabase.co wss://mkwodsholwmsgazddrqp.supabase.co;
+manifest-src 'self';
+object-src 'none';
+base-uri 'self';
+form-action 'self';
+```
+
+- `script-src`의 해시 하나는 3개 HTML이 공유하는 FOUC 방지 인라인 스크립트
+  (`localStorage`의 `'theme'`을 읽어 `data-theme`을 먼저 적용하는 동기 스크립트) 것이다.
+  **이 인라인 스크립트의 내용을 한 글자라도 바꾸면 해시가 깨져서 테마가 깜빡이는
+  대신 CSP가 스크립트 실행 자체를 막아버린다** — 바꿀 때마다 아래로 재계산해서
+  3개 HTML 전부에 동일하게 반영할 것:
+  ```bash
+  python3 -c "
+  import hashlib, base64
+  content = open('index.html','rb').read()
+  start = content.index(b'<script>') + len(b'<script>')
+  end = content.index(b'</script>', start)
+  print('sha256-' + base64.b64encode(hashlib.sha256(content[start:end]).digest()).decode())
+  "
+  ```
+- 이 해시 의존성을 피하려고 변동성이 큰 페이지 로직(로그인/회원가입 폼 제출, OAuth
+  버튼, SW 등록)은 전부 인라인이 아니라 외부 모듈(`static/js/loginPage.js`/
+  `static/js/signupPage.js`/`static/js/app.js`)로 옮겨져 있다 — 새 인라인 `<script>`를
+  추가하지 말고, 가능하면 항상 외부 파일 + `script-src 'self'`로 해결할 것.
+- `connect-src`에는 Supabase 프로젝트 도메인(`https://mkwodsholwmsgazddrqp.supabase.co`,
+  `wss://` 포함)만 허용되어 있다 — Supabase 프로젝트를 바꾸면 이 값도 같이 바꿔야 한다.
+- esm.sh CDN import(`script-src`의 `https://esm.sh`)는 막지 않는다 — 완전한 SRI는
+  `<script type="module">`의 동적 `import` 구문에는 적용할 수 없는 브라우저 한계가
+  있어(정적 `<script integrity="...">`만 지원), 대신 `static/js/app.js`/
+  `static/js/supabaseClient.js`에서 esm.sh import 버전을 정확한 패치 버전까지
+  고정해 공급망 위험을 줄인다(위 파일 구조 항목 참고).
 
 ## 테스트
 
@@ -298,3 +362,17 @@ CLI(`@bubblewrap/cli`).
   `<meta name="theme-color">`는 다크모드와 무관하게 정적으로 고정되어 있다(브라우저
   크롬/스플래시 색상이라 런타임 동적 변경이 PWA 표준상 제한적) — 이번 다크모드
   작업 범위에 포함하지 않았다.
+- 새 인라인 `<script>`(module 포함)를 `index.html`/`static/login.html`/
+  `static/signup.html`에 추가하지 말 것 — CSP의 `script-src`가 `'self'`/
+  `https://esm.sh`/FOUC 스크립트 해시로 좁혀져 있어 해시 없는 인라인 스크립트는
+  조용히 실행이 막힌다. 페이지 로직은 항상 `static/js/*.js` 외부 파일로 작성하고
+  `<script type="module" src="...">`로 불러올 것(`static/js/loginPage.js`/
+  `static/js/signupPage.js`가 그 패턴의 예시).
+- 로그인/회원가입 실패 메시지에 Supabase의 `error.message`를 그대로 노출하지 말 것 —
+  계정 열거(account enumeration)에 악용될 수 있어 일반화된 한국어 메시지로 치환한다
+  (`static/js/loginPage.js`/`static/js/signupPage.js` 참고). 단, `auth.js`의 `signUp`이
+  던지는 클라이언트 검증 에러(이메일 형식/비밀번호 정책/닉네임 누락)는 서버 응답이
+  아니므로 그대로 노출해도 안전하다.
+- `static/js/app.js`/`static/js/supabaseClient.js`의 esm.sh import는 정확한 패치
+  버전까지 고정되어 있다 — 버전을 올릴 때는 의도적으로 직접 숫자를 바꿀 것(`@2`처럼
+  메이저만 쓰거나 버전을 떼면 공급망 위험이 다시 생긴다).

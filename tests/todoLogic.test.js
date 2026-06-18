@@ -2,7 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 test('nextPosition', async (t) => {
-  const { nextPosition } = await import('../js/todoLogic.js');
+  const { nextPosition } = await import('../static/js/todoLogic.js');
 
   await t.test('빈 배열이면 0을 반환한다', () => {
     assert.equal(nextPosition([]), 0);
@@ -14,7 +14,7 @@ test('nextPosition', async (t) => {
 });
 
 test('reorderByIds', async () => {
-  const { reorderByIds } = await import('../js/todoLogic.js');
+  const { reorderByIds } = await import('../static/js/todoLogic.js');
 
   const result = reorderByIds([], ['b', 'a', 'c']);
   assert.deepEqual(result, [
@@ -25,7 +25,7 @@ test('reorderByIds', async () => {
 });
 
 test('withCompletionToggle', async (t) => {
-  const { withCompletionToggle } = await import('../js/todoLogic.js');
+  const { withCompletionToggle } = await import('../static/js/todoLogic.js');
 
   await t.test('completed=true이면 주입한 now 기준 ISO 문자열을 저장한다', () => {
     const now = new Date('2026-01-01T00:00:00.000Z');
@@ -44,7 +44,7 @@ test('withCompletionToggle', async (t) => {
 });
 
 test('priorityLabel / isValidPriority', async (t) => {
-  const { priorityLabel, isValidPriority } = await import('../js/todoLogic.js');
+  const { priorityLabel, isValidPriority } = await import('../static/js/todoLogic.js');
 
   await t.test('high/medium/low를 상/중/하로 매핑한다', () => {
     assert.equal(priorityLabel('high'), '상');

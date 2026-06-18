@@ -3,7 +3,7 @@ import { isValidEmail, isValidPassword, isValidNickname } from './validators.js'
 
 export async function signUp({ email, password, nickname }) {
   if (!isValidEmail(email)) throw new Error('이메일 형식이 올바르지 않습니다.');
-  if (!isValidPassword(password)) throw new Error('비밀번호는 6자 이상이어야 합니다.');
+  if (!isValidPassword(password)) throw new Error('비밀번호는 8자 이상이며 영문과 숫자를 포함해야 합니다.');
   if (!isValidNickname(nickname)) throw new Error('닉네임을 입력해주세요.');
 
   return supabase.auth.signUp({

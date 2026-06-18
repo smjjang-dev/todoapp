@@ -5,7 +5,12 @@ export function isValidEmail(email) {
 }
 
 export function isValidPassword(password) {
-  return typeof password === 'string' && password.length >= 6;
+  return (
+    typeof password === 'string' &&
+    password.length >= 8 &&
+    /[A-Za-z]/.test(password) &&
+    /[0-9]/.test(password)
+  );
 }
 
 export function isValidNickname(nickname) {

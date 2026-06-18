@@ -206,6 +206,7 @@
   .sev-mid { background: rgba(234, 179, 8, 0.15); color: #f0d27a; }
   .sev-low { background: rgba(52, 211, 153, 0.12); color: #7fe0bd; }
   .sev-info { background: var(--accent-soft); color: #93b4fb; }
+  .sev-fixed { background: rgba(52, 211, 153, 0.18); color: #34d399; }
   footer {
     border-top: 1px solid var(--border);
     margin-top: 60px;
@@ -250,8 +251,9 @@
   <main>
     <h1 id="overview">CVE.md — 보안 검토 보고서</h1>
     <p class="lead">Supabase 기반 멀티유저 Todo PWA를 CVE(Common Vulnerabilities and
-      Exposures)/CWE 관점에서 검토한 결과입니다. 코드 수정은 진행하지 않았고, 발견 사항을
-      심각도 순으로 정리한 보고서입니다.</p>
+      Exposures)/CWE 관점에서 검토한 결과입니다. 1~4번 항목은 검토 직후 실제로 수정을
+      적용했고(각 항목에 <span class="sev sev-fixed">수정 완료</span> 표시), 5~6번은 검토
+      결과 실제 위험이 낮아 코드 변경 없이 기록만 남긴 항목입니다.</p>
 
     <section id="method">
       <h2>검토 방법</h2>
@@ -264,14 +266,15 @@
     </section>
 
     <section id="supply-chain">
-      <h2>1. CDN 공급망 의존성 — 버전 미고정 + SRI 부재 <span class="sev sev-high">중-높음</span></h2>
+      <h2>1. CDN 공급망 의존성 — 버전 미고정 + SRI 부재
+        <span class="sev sev-high">중-높음</span> <span class="sev sev-fixed">수정 완료</span></h2>
       <p>CWE-829(신뢰할 수 없는 제어 영역의 기능 포함), CWE-1104(유지보수되지 않거나 검증되지
         않은 서드파티 컴포넌트 사용)</p>
       <pre class="codeblock"><span class="lang-tag">js</span>
-<code>// static/js/app.js:1
+<code>// static/js/app.js:1 (수정 전)
 import Sortable from 'https://esm.sh/sortablejs';
 
-// static/js/supabaseClient.js:1
+// static/js/supabaseClient.js:1 (수정 전)
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';</code></pre>
       <div class="warn">
         <code>sortablejs</code>는 <strong>버전 지정이 전혀 없어</strong> 항상 latest를 가져온다.
@@ -282,13 +285,22 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';</code></p
       <p><strong>실제 위험</strong>: esm.sh 자체가 침해되거나 MITM, 또는 <code>sortablejs</code>
         upstream이 침해될 경우 모든 사용자에게 악성 JS가 자동으로 배포된다. 버전 고정조차
         없는 <code>sortablejs</code>가 가장 약한 지점이다.</p>
+      <div class="ok">
+        <strong>수정 내용</strong>: 두 import 모두 정확한 패치 버전까지 고정했다
+        (<code>sortablejs@1.15.7</code>, <code>@supabase/supabase-js@2.108.2</code>). 완전한
+        SRI는 <code>&lt;script type="module"&gt;</code>의 동적 <code>import</code> 구문에는
+        브라우저가 지원하지 않아(정적 <code>&lt;script integrity="..."&gt;</code>만 지원)
+        적용하지 못했고, 그 대신 버전 고정으로 "받아오는 코드가 항상 동일하다"는 보장을
+        확보했다.
+      </div>
     </section>
 
     <section id="error-disclosure">
-      <h2>2. 로그인/회원가입 에러 메시지 그대로 노출 <span class="sev sev-mid">중</span></h2>
+      <h2>2. 로그인/회원가입 에러 메시지 그대로 노출
+        <span class="sev sev-mid">중</span> <span class="sev sev-fixed">수정 완료</span></h2>
       <p>CWE-209(에러 메시지를 통한 정보 노출) — 계정 열거(account enumeration) 가능성</p>
       <pre class="codeblock"><span class="lang-tag">js</span>
-<code>// static/login.html (signup.html도 동일 패턴)
+<code>// static/login.html (수정 전, signup.html도 동일 패턴)
 const { error } = await signIn({ email, password });
 if (error) {
   errorMessage.textContent = error.message;
@@ -297,22 +309,38 @@ if (error) {
       <p>Supabase가 반환하는 원본 에러 메시지를 그대로 사용자에게 표시한다. "Invalid login
         credentials"와 이메일 중복/미확인 등 메시지 차이를 이용해 특정 이메일의 가입 여부를
         추측할 수 있다.</p>
+      <div class="ok">
+        <strong>수정 내용</strong>: 로그인/회원가입/OAuth 각각의 Supabase 응답 에러를
+        일반화된 한국어 메시지(예: "이메일 또는 비밀번호가 올바르지 않습니다.")로 치환했다
+        (<code>static/js/loginPage.js</code>/<code>static/js/signupPage.js</code>). 단,
+        <code>auth.js</code>의 <code>signUp</code>이 클라이언트 검증으로 던지는 에러(이메일
+        형식/비밀번호 정책/닉네임 누락)는 서버 응답이 아니므로 그대로 노출해도 안전해
+        바꾸지 않았다.
+      </div>
     </section>
 
     <section id="password">
-      <h2>3. 약한 비밀번호 정책 <span class="sev sev-mid">중</span></h2>
+      <h2>3. 약한 비밀번호 정책
+        <span class="sev sev-mid">중</span> <span class="sev sev-fixed">수정 완료</span></h2>
       <p>CWE-521(약한 비밀번호 요구사항)</p>
       <pre class="codeblock"><span class="lang-tag">js</span>
-<code>// static/js/validators.js:7-8
+<code>// static/js/validators.js:7-8 (수정 전)
 export function isValidPassword(password) {
   return typeof password === 'string' && password.length >= 6;
 }</code></pre>
       <p>최소 6자만 검증하고 복잡도(대문자/숫자/특수문자) 요구가 없다. 클라이언트 검증이라
         우회 가능하며, 서버(Supabase 기본 정책)도 길이 6자 정도로 약하다.</p>
+      <div class="ok">
+        <strong>수정 내용</strong>: 8자 이상 + 영문/숫자 혼합을 요구하도록 강화했고
+        (<code>isValidPassword</code>), <code>tests/validators.test.js</code>에 케이스를
+        추가했다. <code>static/signup.html</code>의 placeholder/안내 문구와
+        <code>README.md</code>도 새 정책에 맞춰 갱신했다.
+      </div>
     </section>
 
     <section id="csp">
-      <h2>4. CSP(Content-Security-Policy) 부재 <span class="sev sev-mid">낮-중</span></h2>
+      <h2>4. CSP(Content-Security-Policy) 부재
+        <span class="sev sev-mid">낮-중</span> <span class="sev sev-fixed">수정 완료</span></h2>
       <p><code>index.html</code>/<code>static/login.html</code>/<code>static/signup.html</code>
         어디에도 CSP meta 태그가 없다. 현재 실제로 악용 가능한 XSS 주입 경로는 발견되지
         않았지만(<a href="#innerhtml">5번</a> 참고), CSP가 없으면 향후 어떤 XSS든 영향 범위가
@@ -321,6 +349,17 @@ export function isValidPassword(password) {
         3개 HTML <code>&lt;head&gt;</code>에 FOUC 방지 동기 인라인 스크립트가 있어, CSP를
         도입하려면 해당 인라인 스크립트에 nonce/hash를 부여해야 한다 — 같이 검토해야 할
         트레이드오프다.
+      </div>
+      <div class="ok">
+        <strong>수정 내용</strong>: 3개 HTML 모두에 동일한 CSP meta 태그를 추가했다
+        (<code>default-src 'self'; script-src 'self' https://esm.sh '&lt;FOUC 스크립트 sha256
+        해시&gt;'; ...</code>). 정적 호스팅(GitHub Pages)이라 요청마다 nonce를 새로 발급할 수
+        없으므로, 변동성 없는 FOUC 스크립트는 해시로 허용하고, 변동성이 큰 로그인/회원가입
+        페이지 로직은 인라인에서 <code>static/js/loginPage.js</code>/
+        <code>static/js/signupPage.js</code> 외부 모듈로 빼내 해시 관리 대상에서 제외했다.
+        헤드리스 Chromium으로 3개 페이지 모두 CSP violation 없이 정상 동작하는지 검증했다.
+        자세한 정책 내용과 해시 재계산 방법은 <a href="CLAUDE.html#csp">CLAUDE.md의 CSP
+        섹션</a> 참고.
       </div>
     </section>
 
@@ -373,13 +412,13 @@ logoutBtn.innerHTML =
     <section id="summary">
       <h2>요약 표</h2>
       <table class="summary">
-        <tr><th>항목</th><th>심각도</th><th>CWE</th><th>위치</th></tr>
-        <tr><td>CDN 공급망(버전 미고정, SRI 부재)</td><td><span class="sev sev-high">중-높음</span></td><td>CWE-829, CWE-1104</td><td><code>app.js:1</code>, <code>supabaseClient.js:1</code></td></tr>
-        <tr><td>로그인 에러 메시지 노출</td><td><span class="sev sev-mid">중</span></td><td>CWE-209</td><td><code>static/login.html</code>, <code>static/signup.html</code></td></tr>
-        <tr><td>약한 비밀번호 정책</td><td><span class="sev sev-mid">중</span></td><td>CWE-521</td><td><code>static/js/validators.js:7-8</code></td></tr>
-        <tr><td>CSP 부재</td><td><span class="sev sev-mid">낮-중</span></td><td>-</td><td><code>index.html</code> 등 3개 HTML</td></tr>
-        <tr><td>innerHTML 패턴(현재 안전)</td><td><span class="sev sev-info">참고</span></td><td>CWE-79 (해당 없음)</td><td><code>static/js/app.js</code></td></tr>
-        <tr><td>클라이언트 priority 값 신뢰</td><td><span class="sev sev-low">낮음</span></td><td>CWE-602</td><td><code>static/js/app.js</code></td></tr>
+        <tr><th>항목</th><th>심각도</th><th>CWE</th><th>위치</th><th>상태</th></tr>
+        <tr><td>CDN 공급망(버전 미고정, SRI 부재)</td><td><span class="sev sev-high">중-높음</span></td><td>CWE-829, CWE-1104</td><td><code>app.js:1</code>, <code>supabaseClient.js:1</code></td><td><span class="sev sev-fixed">수정 완료</span></td></tr>
+        <tr><td>로그인 에러 메시지 노출</td><td><span class="sev sev-mid">중</span></td><td>CWE-209</td><td><code>static/login.html</code>, <code>static/signup.html</code></td><td><span class="sev sev-fixed">수정 완료</span></td></tr>
+        <tr><td>약한 비밀번호 정책</td><td><span class="sev sev-mid">중</span></td><td>CWE-521</td><td><code>static/js/validators.js:7-8</code></td><td><span class="sev sev-fixed">수정 완료</span></td></tr>
+        <tr><td>CSP 부재</td><td><span class="sev sev-mid">낮-중</span></td><td>-</td><td><code>index.html</code> 등 3개 HTML</td><td><span class="sev sev-fixed">수정 완료</span></td></tr>
+        <tr><td>innerHTML 패턴(현재 안전)</td><td><span class="sev sev-info">참고</span></td><td>CWE-79 (해당 없음)</td><td><code>static/js/app.js</code></td><td>변경 없음(이미 안전)</td></tr>
+        <tr><td>클라이언트 priority 값 신뢰</td><td><span class="sev sev-low">낮음</span></td><td>CWE-602</td><td><code>static/js/app.js</code></td><td>변경 없음(DB 제약으로 방어)</td></tr>
       </table>
     </section>
 

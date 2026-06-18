@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://esm.sh 'sha256-qrm+vxc1woHc8ZhJWHNUk0eS0Z4RC1I/j4n/y6HTL9A='; style-src 'self'; img-src 'self'; connect-src 'self' https://mkwodsholwmsgazddrqp.supabase.co wss://mkwodsholwmsgazddrqp.supabase.co; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
   <title>회원가입 - Todo List</title>
   <script>
     (function () {
@@ -23,7 +24,7 @@
     <form id="signup-form" class="auth-form">
       <input id="nickname" type="text" placeholder="닉네임" autocomplete="nickname" required>
       <input id="email" type="email" placeholder="이메일" autocomplete="email" required>
-      <input id="password" type="password" placeholder="비밀번호 (6자 이상)" autocomplete="new-password" required>
+      <input id="password" type="password" placeholder="비밀번호 (8자 이상, 영문+숫자 포함)" autocomplete="new-password" required minlength="8">
       <button type="submit">회원가입</button>
     </form>
     <p id="error-message" class="error-message"></p>
@@ -35,57 +36,6 @@
     </div>
     <p class="auth-switch">이미 계정이 있으신가요? <a href="login.html">로그인</a></p>
   </main>
-  <script type="module">
-    import { signUp, signInWithOAuth, redirectIfAuthed } from './js/auth.js';
-
-    redirectIfAuthed();
-
-    const form = document.getElementById('signup-form');
-    const errorMessage = document.getElementById('error-message');
-    const successMessage = document.getElementById('success-message');
-
-    form.addEventListener('submit', async (event) => {
-      event.preventDefault();
-      errorMessage.textContent = '';
-      successMessage.textContent = '';
-
-      const nickname = document.getElementById('nickname').value;
-      const email = document.getElementById('email').value.trim();
-      const password = document.getElementById('password').value;
-
-      try {
-        const { data, error } = await signUp({ email, password, nickname });
-        if (error) {
-          errorMessage.textContent = error.message;
-          return;
-        }
-        if (data.session) {
-          window.location.href = '../index.html';
-          return;
-        }
-        successMessage.textContent = '회원가입이 완료되었습니다. 로그인 페이지로 이동해주세요.';
-        form.reset();
-      } catch (err) {
-        errorMessage.textContent = err.message;
-      }
-    });
-
-    document.getElementById('google-login').addEventListener('click', async () => {
-      errorMessage.textContent = '';
-      const { error } = await signInWithOAuth('google');
-      if (error) errorMessage.textContent = error.message;
-    });
-
-    document.getElementById('github-login').addEventListener('click', async () => {
-      errorMessage.textContent = '';
-      const { error } = await signInWithOAuth('github');
-      if (error) errorMessage.textContent = error.message;
-    });
-  </script>
-  <script>
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('../sw.js');
-    }
-  </script>
+  <script type="module" src="js/signupPage.js"></script>
 </body>
 </html>

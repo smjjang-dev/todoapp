@@ -2,7 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 test('isValidEmail', async (t) => {
-  const { isValidEmail } = await import('../js/validators.js');
+  const { isValidEmail } = await import('../static/js/validators.js');
 
   await t.test('정상 이메일은 통과한다', () => {
     assert.equal(isValidEmail('user@example.com'), true);
@@ -18,19 +18,27 @@ test('isValidEmail', async (t) => {
 });
 
 test('isValidPassword', async (t) => {
-  const { isValidPassword } = await import('../js/validators.js');
+  const { isValidPassword } = await import('../static/js/validators.js');
 
-  await t.test('6자 이상이면 통과한다', () => {
-    assert.equal(isValidPassword('123456'), true);
+  await t.test('8자 이상 + 영문/숫자 혼합이면 통과한다', () => {
+    assert.equal(isValidPassword('abcd1234'), true);
   });
 
-  await t.test('5자 이하면 실패한다', () => {
-    assert.equal(isValidPassword('12345'), false);
+  await t.test('7자 이하면 실패한다', () => {
+    assert.equal(isValidPassword('abc1234'), false);
+  });
+
+  await t.test('숫자 없이 영문만이면 실패한다', () => {
+    assert.equal(isValidPassword('abcdefgh'), false);
+  });
+
+  await t.test('영문 없이 숫자만이면 실패한다', () => {
+    assert.equal(isValidPassword('12345678'), false);
   });
 });
 
 test('isValidNickname', async (t) => {
-  const { isValidNickname } = await import('../js/validators.js');
+  const { isValidNickname } = await import('../static/js/validators.js');
 
   await t.test('공백을 trim 후 비어있지 않으면 통과한다', () => {
     assert.equal(isValidNickname('  철수  '), true);

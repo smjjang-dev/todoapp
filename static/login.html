@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://esm.sh 'sha256-qrm+vxc1woHc8ZhJWHNUk0eS0Z4RC1I/j4n/y6HTL9A='; style-src 'self'; img-src 'self'; connect-src 'self' https://mkwodsholwmsgazddrqp.supabase.co wss://mkwodsholwmsgazddrqp.supabase.co; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
   <title>로그인 - Todo List</title>
   <script>
     (function () {
@@ -38,44 +39,6 @@
     </div>
     <p class="auth-switch">계정이 없으신가요? <a href="signup.html">회원가입</a></p>
   </main>
-  <script type="module">
-    import { signIn, signInWithOAuth, redirectIfAuthed } from './js/auth.js';
-
-    redirectIfAuthed();
-
-    const form = document.getElementById('login-form');
-    const errorMessage = document.getElementById('error-message');
-
-    form.addEventListener('submit', async (event) => {
-      event.preventDefault();
-      errorMessage.textContent = '';
-      const email = document.getElementById('email').value.trim();
-      const password = document.getElementById('password').value;
-
-      const { error } = await signIn({ email, password });
-      if (error) {
-        errorMessage.textContent = error.message;
-        return;
-      }
-      window.location.href = '../index.html';
-    });
-
-    document.getElementById('google-login').addEventListener('click', async () => {
-      errorMessage.textContent = '';
-      const { error } = await signInWithOAuth('google');
-      if (error) errorMessage.textContent = error.message;
-    });
-
-    document.getElementById('github-login').addEventListener('click', async () => {
-      errorMessage.textContent = '';
-      const { error } = await signInWithOAuth('github');
-      if (error) errorMessage.textContent = error.message;
-    });
-  </script>
-  <script>
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('../sw.js');
-    }
-  </script>
+  <script type="module" src="js/loginPage.js"></script>
 </body>
 </html>
