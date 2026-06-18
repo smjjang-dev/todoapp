@@ -4,6 +4,15 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Todo List</title>
+  <script>
+    (function () {
+      var stored = localStorage.getItem('theme');
+      var theme = stored === 'light' || stored === 'dark'
+        ? stored
+        : (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+      document.documentElement.dataset.theme = theme;
+    })();
+  </script>
   <link rel="stylesheet" href="static/css/style.css">
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#2563eb">
@@ -11,10 +20,28 @@
 <body>
   <main class="app">
     <header class="app-header">
-      <h1>Todo List</h1>
+      <div class="header-title">
+        <button id="theme-toggle" type="button" class="theme-toggle" aria-label="다크모드 전환" aria-pressed="false">
+          <svg class="icon-sun" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="5"></circle>
+            <line x1="12" y1="1" x2="12" y2="3"></line>
+            <line x1="12" y1="21" x2="12" y2="23"></line>
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+            <line x1="1" y1="12" x2="3" y2="12"></line>
+            <line x1="21" y1="12" x2="23" y2="12"></line>
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+          </svg>
+          <svg class="icon-moon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+          </svg>
+        </button>
+        <h1>Todo List</h1>
+      </div>
       <div class="header-actions">
         <span id="greeting" class="greeting"></span>
-        <button id="logout-btn" type="button" class="logout-btn">로그아웃</button>
+        <button id="logout-btn" type="button" class="logout-btn" aria-label="로그아웃"></button>
       </div>
     </header>
     <form id="todo-form">
@@ -24,7 +51,7 @@
         <option value="medium" selected>중</option>
         <option value="low">하</option>
       </select>
-      <button type="submit">추가</button>
+      <button type="submit" class="icon-submit-btn" aria-label="추가"></button>
     </form>
     <ul id="todo-list"></ul>
   </main>

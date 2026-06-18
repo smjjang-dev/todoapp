@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'todoapp-shell-v2';
+const CACHE_VERSION = 'todoapp-shell-v3';
 
 const SHELL_ASSETS = [
   'index.html',
@@ -10,6 +10,7 @@ const SHELL_ASSETS = [
   'static/js/auth.js',
   'static/js/config.js',
   'static/js/supabaseClient.js',
+  'static/js/theme.js',
   'static/js/todoLogic.js',
   'static/js/validators.js',
   'static/icons/icon-192.png',

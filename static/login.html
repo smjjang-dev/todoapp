@@ -4,6 +4,15 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>로그인 - Todo List</title>
+  <script>
+    (function () {
+      var stored = localStorage.getItem('theme');
+      var theme = stored === 'light' || stored === 'dark'
+        ? stored
+        : (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+      document.documentElement.dataset.theme = theme;
+    })();
+  </script>
   <link rel="stylesheet" href="css/style.css">
   <link rel="manifest" href="../manifest.json">
   <meta name="theme-color" content="#2563eb">
@@ -14,7 +23,12 @@
     <form id="login-form" class="auth-form">
       <input id="email" type="email" placeholder="이메일" autocomplete="email" required>
       <input id="password" type="password" placeholder="비밀번호" autocomplete="current-password" required>
-      <button type="submit">로그인</button>
+      <button type="submit" class="icon-submit-btn" aria-label="로그인">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+          <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+        </svg>
+      </button>
     </form>
     <p id="error-message" class="error-message"></p>
     <div class="oauth-divider">또는</div>

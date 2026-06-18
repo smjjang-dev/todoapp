@@ -1,6 +1,7 @@
 import Sortable from 'https://esm.sh/sortablejs';
 import { supabase } from './supabaseClient.js';
 import { requireSession, signOut } from './auth.js';
+import { toggleTheme } from './theme.js';
 import {
   PRIORITY_LABELS,
   nextPosition,
@@ -14,6 +15,20 @@ const prioritySelect = document.getElementById('priority-select');
 const list = document.getElementById('todo-list');
 const logoutBtn = document.getElementById('logout-btn');
 const greeting = document.getElementById('greeting');
+const themeToggle = document.getElementById('theme-toggle');
+const submitBtn = form.querySelector('button[type="submit"]');
+
+logoutBtn.innerHTML =
+  '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+  '<rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>' +
+  '<path d="M7 11V7a5 5 0 0 1 9.9-1"></path>' +
+  '</svg>';
+
+submitBtn.innerHTML =
+  '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+  '<line x1="12" y1="5" x2="12" y2="19"></line>' +
+  '<line x1="5" y1="12" x2="19" y2="12"></line>' +
+  '</svg>';
 
 let currentUserId = null;
 
@@ -195,6 +210,13 @@ Sortable.create(list, {
 logoutBtn.addEventListener('click', async () => {
   await signOut();
   window.location.href = 'static/login.html';
+});
+
+themeToggle.setAttribute('aria-pressed', String(document.documentElement.dataset.theme === 'dark'));
+
+themeToggle.addEventListener('click', () => {
+  const next = toggleTheme();
+  themeToggle.setAttribute('aria-pressed', String(next === 'dark'));
 });
 
 (async function init() {
