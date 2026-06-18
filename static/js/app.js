@@ -94,7 +94,14 @@ function render(todos) {
     const deleteBtn = document.createElement('button');
     deleteBtn.type = 'button';
     deleteBtn.className = 'delete-btn';
-    deleteBtn.textContent = '삭제';
+    deleteBtn.setAttribute('aria-label', '삭제');
+    deleteBtn.innerHTML =
+      '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+      '<polyline points="3 6 5 6 21 6"></polyline>' +
+      '<path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path>' +
+      '<path d="M10 11v6"></path><path d="M14 11v6"></path>' +
+      '<path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path>' +
+      '</svg>';
 
     item.appendChild(handle);
     item.appendChild(checkbox);
@@ -158,7 +165,7 @@ list.addEventListener('click', async (event) => {
   const item = event.target.closest('.todo-item');
   if (!item) return;
 
-  if (event.target.classList.contains('delete-btn')) {
+  if (event.target.closest('.delete-btn')) {
     await deleteTodo(item.dataset.id);
     await refresh();
   }
