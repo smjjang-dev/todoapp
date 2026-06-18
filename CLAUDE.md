@@ -170,6 +170,23 @@ form-action 'self';
   `static/js/supabaseClient.js`에서 esm.sh import 버전을 정확한 패치 버전까지
   고정해 공급망 위험을 줄인다(위 파일 구조 항목 참고).
 
+## 작업 기록(WORKFLOW)
+
+`WORKFLOW.md`/`WORKFLOW.html`에 이 프로젝트에서 사용자가 작성한 프롬프트 원문과,
+그에 대응해 수행한 작업 요약을 시간순으로 기록한다. **사용자 요청을 하나 처리할
+때마다(코드/문서 변경이 있는 작업 단위로) `WORKFLOW.md`에 새 섹션을 추가하고
+`WORKFLOW.html`도 동일하게 갱신할 것** — 둘 다 항상 같은 내용을 유지해야 한다(다른
+문서들과 같은 `.md`/`.html` 쌍 패턴).
+
+- 프롬프트는 원문을 그대로(인용구로) 적고, 작업 내용은 불릿으로 요약한다.
+- **개인정보·키·비밀번호·접속 URL 등 공개되면 안 되는 정보는 리터럴 값을 적지 말고
+  마스킹해서 지칭만 한다**(예: "Supabase 프로젝트 URL", "anon key", "커밋 해시"처럼
+  종류만 언급). 이 값들이 이미 RLS로 보호되거나 공개 가능한 값이라도, `WORKFLOW.md`/
+  `.html`은 별도 안전장치 없이 누구나 볼 수 있는 문서이므로 항상 마스킹한다.
+- `README.html`/`CLAUDE.html`/`auth.html`/`CVE.html`의 docbar/footer에 이미
+  `WORKFLOW.html` 링크가 있다 — 새 문서를 추가할 때도 5개 문서 전부의 docbar/footer를
+  같이 갱신하는 패턴을 유지할 것.
+
 ## 테스트
 
 ```bash

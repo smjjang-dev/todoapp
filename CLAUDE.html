@@ -198,6 +198,7 @@
   <a href="CLAUDE.html" class="current">🔧 CLAUDE.md (개발 문서)</a>
   <a href="auth.html">🔐 auth.md (OAuth 설정)</a>
   <a href="CVE.html">🛡️ CVE.md (보안 검토)</a>
+  <a href="WORKFLOW.html">📜 WORKFLOW.md (작업 기록)</a>
 </div>
 <div class="layout">
   <nav id="sidenav">
@@ -206,6 +207,7 @@
     <a href="#run">실행 방법</a>
     <a href="#structure">파일 구조</a>
     <a href="#csp">CSP</a>
+    <a href="#workflow">작업 기록(WORKFLOW)</a>
     <a href="#test">테스트</a>
     <a href="#schema">Supabase 스키마</a>
     <a href="#deploy">배포 절차</a>
@@ -469,6 +471,28 @@ print('sha256-' + base64.b64encode(hashlib.sha256(content[start:end]).digest()).
         버전까지 고정해 공급망 위험을 줄인다(<a href="#structure">파일 구조</a> 참고).</p>
     </section>
 
+    <section id="workflow">
+      <h2>작업 기록(WORKFLOW)</h2>
+      <p><a href="WORKFLOW.html">WORKFLOW.md</a>/<code>WORKFLOW.html</code>에 이 프로젝트에서
+        사용자가 작성한 프롬프트 원문과, 그에 대응해 수행한 작업 요약을 시간순으로
+        기록한다. <strong>사용자 요청을 하나 처리할 때마다(코드/문서 변경이 있는 작업
+        단위로) <code>WORKFLOW.md</code>에 새 섹션을 추가하고 <code>WORKFLOW.html</code>도
+        동일하게 갱신할 것</strong> — 둘 다 항상 같은 내용을 유지해야 한다(다른 문서들과
+        같은 <code>.md</code>/<code>.html</code> 쌍 패턴).</p>
+      <ul>
+        <li>프롬프트는 원문을 그대로(인용구로) 적고, 작업 내용은 불릿으로 요약한다.</li>
+        <li><strong>개인정보·키·비밀번호·접속 URL 등 공개되면 안 되는 정보는 리터럴
+          값을 적지 말고 마스킹해서 지칭만 한다</strong>(예: "Supabase 프로젝트 URL",
+          "anon key", "커밋 해시"처럼 종류만 언급). 이 값들이 이미 RLS로 보호되거나
+          공개 가능한 값이라도, <code>WORKFLOW.md</code>/<code>.html</code>은 별도
+          안전장치 없이 누구나 볼 수 있는 문서이므로 항상 마스킹한다.</li>
+        <li><code>README.html</code>/<code>CLAUDE.html</code>/<code>auth.html</code>/
+          <code>CVE.html</code>의 docbar/footer에 이미 <code>WORKFLOW.html</code> 링크가
+          있다 — 새 문서를 추가할 때도 5개 문서 전부의 docbar/footer를 같이 갱신하는
+          패턴을 유지할 것.</li>
+      </ul>
+    </section>
+
     <section id="test">
       <h2>테스트</h2>
       <pre class="codeblock"><span class="lang-tag">bash</span>
@@ -709,7 +733,8 @@ create policy "owner full access" on todo_todos
 
     <footer>CLAUDE.md 기반으로 생성된 문서 뷰어입니다. ·
       <a href="README.html">README</a> · <a href="auth.html">auth.md</a> ·
-      <a href="CVE.html">CVE.md (보안 검토)</a></footer>
+      <a href="CVE.html">CVE.md (보안 검토)</a> ·
+      <a href="WORKFLOW.html">WORKFLOW.md (작업 기록)</a></footer>
   </main>
 </div>
 
