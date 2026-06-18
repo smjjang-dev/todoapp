@@ -60,3 +60,4 @@ TWA 방식 APK. Play 스토어 서명이 아니라 사이드로드(출처를 알
 
 - 개발/기술 문서: [CLAUDE.md](CLAUDE.md)
 - 배포 절차: [GitHubPages.md](GitHubPages.md)
+- 보안 검토(CVE/CWE): [CVE.md](CVE.md)
