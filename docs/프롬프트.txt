@@ -1,0 +1,198 @@
+• 종료는 wsl --terminate Ubuntu-22.04
+
+git commit -m ‘add history’
+git pull--no-edit
+git push
+
+
+git clone https://github.com/weable-kosa/kosa-vibecoding-2026-3rd.git
+
+git fetch https://github.com/weable-kosa/kosa-vibecoding-2026-3rd.git
+
+src/exercise/smjjang/day02
+
+테스리스 어플리케이션 기준
+백엔드의 메소드에 대한 유닛테스트를 작성한다.
+앞으로 코드 수정시 이 유닛테스트를 실행해서 통과여부를 판단한다.
+백엔드 DB를 docker compose  기반의 mysql로 변경한다.
+sql은 ansi표준을 따른다.
+
+
+git fetch main && git merge main 
+
+git ls-remote https://smjjang_dev@github.com/weable-kosa/kosa-vibecoding-2026-3rd.git
+
+
+현재 docker compose 방식으로 실행되는건 mysql 뿐인데 백엔드와 프론트엔드도 docker compose 방식으로 전환하여 실행하고 종료하고 싶어
+이런 방법을 하기 위한 계획을 세워줘
+
+
+HTML, CSS, JS 만을 사용해서 간단한 TODO LIST  앱을 만들고  각 별도파일로 구성해줘 
+별도 도구 없이 index.html을 이용하여 정적으로 실행한다.
+
+추가, 삭제, 완료 기능 필요
+데이터 저장은  로컬스토리지에 저장한다.
+
+
+현재까지 만든 TODO 리스트 앱을  정적페이지는  github pages를 이용하고 
+데이터 부분은  superbase를 이용하여 서비스를 할수 있게 계획을 세워줘
+그리고 멀티유저를 위해 사용자 가입 및 로그인을 통해 본인 할일만 보여주게 하고 싶어
+회원가입은  email과 패스워드와 닉네임을 사용할것  추후 구글 인증과 카카오인증을 고려하여 설계를 해줘
+할일은 현재 기능에서  중요도 (상 중 하)를 추가하고 완료될때 완료시점 정보도 저장하고 싶어
+위 요구사항을 진행하기 위한 계획을 세워줘
+
+superbase project URL : https://mkwodsholwmsgazddrqp.supabase.co
+superbase publishable key : sb_publishable_N9bJtyK3DyurZyldpaqC0A_0aa0q9oQ
+
+
+git clone git@github.com:smjjang-dev/todoapp.git /tmp/todoapp-fix
+
+sed -i "s/toLocaleString()/toLocaleString('ko-KR')/" js/app.js
+git add js/app.js
+git commit -m "fix: 완료 시각 표시를 한국어 로캘로 고정"
+git push origin main
+
+
+모노레포 push후  배포사이트에 반영시 매번 수정사항을 아래와 같이 수행하는데 매번 내가 수행해야하는데
+너가 할수는 없나?
+배포순서
+# 배포사이트 clone 
+git clone git@github.com:smjjang-dev/todoapp.git
+# 복사폴더이동
+cd todoapp
+# 모노레포에서 수정된 파일을 찾아서 복사한다.
+cp /home/ubuntu/work/kosa-vibecoding-2026-3rd/src/exercise/smjjang/day02/todolist/README.md README.md
+cp -r /home/ubuntu/work/kosa-vibecoding-2026-3rd/src/exercise/smjjang/day02/todolist/screenshots screenshots
+# 배포사이트 git 추가 및 commit && main push
+git add README.md screenshots
+git commit -m "docs: 화면 캡쳐 포함 사용법 README.md 추가"
+git push origin main
+
+
+
+/plugin marketplace update claude-plugins-official
+/plugin install playground@claude-plugins-official
+
+HTML,CSS,JS 를 이용하여 KANBAN 보드 웹서비스를 만들어주 각각 파일로생성해줘
+
+
+PRD, TRD, Userr Flow, database design, design system, tasks, test case md 파일생성 계획을 정리해줘
+
+
+
+CVE(Common Vulnerabilities and Exposures) 중점으로 검토해줘
+
+지금까지 내가 작성한 프롬프트와 그와 상응애서 
+네가 한작업을 정리해서 WORKFLOW.html로 저장해줘
+프롬프트는 그대로 저장하고 작업내용은 요약해서 작성해주면 돼
+이 내용을 CLAUDE.md 에 반영해서 앞으로 작업시 WORDFLOW.html 를 업데이트해줘
+단, 공개되면 안되는 정보(개인정보,키,암호등)는 마스킹처리를 해서 진행해줘
+
+
+git commit 
+
+This version requires zstd for extraction. Please install zstd and try again:
+
+
+https://github.com/github/spec-kit/blob/main/README.md
+
+
+claude --dangerously-skip-permissions
+
+wsl 
+ollama 
+
+#설치
+curl -fsSL https://ollama.com/install.sh | sh
+
+curl -fsSL https://ollama.com/install.sh | sed 'v0.23.2#https://ollama.com' | sh
+
+#실행
+#ollama serve
+ollama serve &  ##백그라운드 실행
+
+#중지
+sudo systemctl stop ollama
+sudo pkill ollama # 강제종료
+
+
+#서비스 확인
+http://localhost:11434
+
+#모델다운로드
+ollama run gemma4
+#claude code 실행
+ollama launch claude --model gemma4
+
+
+ 이 브라우저는 OPFS(영속 저장)를 지원하지 않아 새로고침 시 데이터가 사라집니다.
+
+#ollama 삭제
+sudo rm /usr/local/bin/ollama
+sudo rm /etc/systemd/system/ollama.service
+sudo rm /usr/share/ollama
+
+# 0.23.0
+
+#토큰길이 조정
+export CLAUDE_CODE_MAX_OUTPUT_TOKENS=64000
+
+settings.json
+
+{
+  "env": {
+    "CLAUDE_CODE_MAX_OUTPUT_TOKENS": 64000
+  },
+  "skipDangerousModePermissionPrompt": true
+}
+
+
+-----------------------------
+curl -fsSL https://ollama.com/install.sh > install.sh
+
+bash# 주변 줄 확인
+OLLAMA_VERSION="원하는_버전" 
+VER_PARAM="${OLLAMA_VERSION:+?version=$OLLAMA_VERSION}"
+
+
+sudo bash install.sh
+
+
+ollama list
+
+
+ollama run 모델명
+
+ollama run qwen3
+
+ollama rm <삭제할_모델명>
+
+sudo systemctl restart ollama
+
+
+run_claude_code_local.sh
+
+
+HOST=127.0.0.1
+PORT=11434
+
+export ANTHROPIC_BASE_URL="http://${HOST}:${PORT}"
+export ANTHROPIC_AUTH_TOKEN="ollama"
+export ANTHROPIC_API_KEY=""
+export CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1
+
+exec claude --model "$1"
+
+ ~/run_claude_code_local.sh qwen3
+ 
+ speckit  기반으로 공유협업 화이트보드를 구축하시오 
+ 
+ 
+ /speckit-constitution 코드품질, 테스트, UX 일관성, 성능, 요구사항 중심 원칙 정의
+ 
+                       
+ **데이터베이스**: Supabase를 단일 데이터 저장소를 이용하되 인증(Auth)은  google OAth를 이용한다.
+ 으로 변경해줘
+ 
+ 
+ https://github.com/smjjang-dev/WBoard.git
