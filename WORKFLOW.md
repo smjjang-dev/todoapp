@@ -139,3 +139,35 @@
   갱신, 드래그, 스크롤 로드, 실제 로그인) 검증은 수행하지 못함 — 정적 서버를 띄워
   변경된 정적 자산이 200으로 서빙되고 새 마크업이 응답에 포함되는 것까지만 확인하고,
   나머지는 사용자에게 직접 확인을 안내
+
+## 10. Todo 화면 헤더/본문/풋터 3단 레이아웃 + 공통 풋터
+
+> TodoList UI개선할꺼야 할일 리스트 화면을 헤더,본문,푸터 3단계로 나누고 헤더는
+> 할일입력화면라인까지 본문: 할일리스트 (스크롤대상) 푸터: 제일하단에 "copyleft 2026
+> smjjang  / 사용법[링크: README.html"  가운데정렬 로그인화면에도 풋터는 동일하게
+> 적용한다
+>
+> (후속 지시) 푸터 copyleft 2026 smjjang | 사용법 으로 변경해줘
+
+- `index.html`의 `<main class="app">`에 `todo-app` 클래스를 추가하고, `body`를
+  `flex-direction: column`(+ `height: 100vh`)으로 바꿔 헤더(타이틀/시계/진행률/입력
+  폼)는 고정 높이로 위에 두고, `#todo-list`만 `flex: 1; min-height: 0; overflow-y:
+  auto;`로 내부 스크롤 영역이 되도록 변경(무한 스크롤의 `IntersectionObserver`는 기본
+  root가 뷰포트라 내부 스크롤 컨테이너로 클리핑돼도 그대로 동작 — JS 변경 없이
+  검증됨)
+- `<footer class="site-footer">`(`copyleft 2026 smjjang | <a href="...">사용법</a>`,
+  링크는 루트의 `README.html`)를 `index.html`/`static/login.html`/
+  `static/signup.html` 3곳 모두 `.app` 바깥 형제로 추가. `body`에
+  `margin-top: auto`(footer)로 미는 고전적 sticky-footer 패턴을 적용해, 본문이 짧은
+  로그인/회원가입 화면에서도 풋터가 항상 화면 최하단·가운데정렬로 고정되게 함
+  (회원가입 화면 포함 여부는 사용자에게 확인 후 포함하기로 결정)
+- `sw.js`의 `CACHE_VERSION`을 `v6`으로 갱신(`SHELL_ASSETS` 목록 자체는 변경 없음 —
+  기존 파일들의 내용만 바뀜)
+- 이 샌드박스에 캐시돼 있던 헤드리스 Chromium 우회 환경(`libnspr4`/`libnss3`/
+  `libasound2` 추출 라이브러리, Playwright Chromium 바이너리)을 재사용해 실제
+  브라우저 스크린샷으로 검증: 처음 시도에서 `body`가 `min-height: 100vh`만 갖고 있어
+  내용이 넘치면 `.todo-app`/`#todo-list`가 줄어들지 않고 페이지 전체가 늘어나
+  풋터가 화면 밖으로 밀려나는 버그를 발견 → `height: 100vh`(+ 안전장치로
+  `overflow-y: auto`)로 고정해 해결. 더미 할일 30개를 주입한 임시 미리보기 HTML(저장소
+  미반영, 검증 후 삭제)로 모바일/데스크톱/다크모드/항목 0~30개 범위에서 헤더 고정·
+  본문 스크롤·풋터 최하단 고정을 모두 확인(`node --test` 39개도 재통과 확인)
