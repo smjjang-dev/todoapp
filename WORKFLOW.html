@@ -182,6 +182,7 @@
     <a href="#step-9">9. 기능 개선 6건</a>
     <a href="#step-10">10. 헤더/본문/풋터 레이아웃</a>
     <a href="#step-11">11. 추가 CVE 검증</a>
+    <a href="#step-12">12. 풋터 링크 새 창</a>
   </nav>
 
   <main>
@@ -413,6 +414,24 @@
         <li><strong>결론: 이번 레이아웃/풋터 변경으로 새로 발생한 취약점 없음</strong> —
           <code>CVE.md</code>/<code>CVE.html</code>에 추가할 신규 항목 없이 현재 상태
           유지</li>
+      </ul>
+    </section>
+
+    <section id="step-12">
+      <h2>12. 풋터 "사용법" 링크를 새 창으로 열기</h2>
+      <div class="prompt-quote"><span class="tag">프롬프트</span>사용법 링크 클릭시 새창형태로 변경해줘</div>
+      <ul>
+        <li><code>index.html</code>/<code>static/login.html</code>/
+          <code>static/signup.html</code> 풋터의 <code>&lt;a href="..."&gt;사용법&lt;/a&gt;</code>
+          에 <code>target="_blank"</code>를 추가. 같이 추가한 <code>rel="noopener"</code>로
+          새로 열린 탭이 <code>window.opener</code>를 통해 원래 탭을 조작하지 못하게
+          차단(리버스 탭내빙 방지 — 동일 출처 링크라 실제 위험은 낮지만,
+          <code>target="_blank"</code>를 쓰는 한 항상 짝지어야 하는 표준 방어)</li>
+        <li><code>sw.js</code>의 <code>CACHE_VERSION</code>을 <code>v7</code>로 갱신</li>
+        <li>헤드리스 브라우저로 새 탭이 실제로 열리고(<code>target</code>/<code>rel</code>
+          속성, 원래 탭은 <code>login.html</code>에 그대로 남아있음)
+          <code>window.opener === null</code>(noopener 동작)인 것까지 확인.
+          <code>node --test</code> 39개 재통과 확인</li>
       </ul>
     </section>
 

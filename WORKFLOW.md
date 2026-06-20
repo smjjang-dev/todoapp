@@ -193,3 +193,17 @@
   1~6번 항목은 이번 변경으로 건드리지 않았음을 재확인
 - **결론: 이번 레이아웃/풋터 변경으로 새로 발생한 취약점 없음** — `CVE.md`/`CVE.html`에
   추가할 신규 항목 없이 현재 상태 유지
+
+## 12. 풋터 "사용법" 링크를 새 창으로 열기
+
+> 사용법 링크 클릭시 새창형태로 변경해줘
+
+- `index.html`/`static/login.html`/`static/signup.html` 풋터의 `<a href="...">사용법</a>`에
+  `target="_blank"`를 추가. 같이 추가한 `rel="noopener"`로 새로 열린 탭이
+  `window.opener`를 통해 원래 탭을 조작하지 못하게 차단(리버스 탭내빙 방지 — 동일
+  출처 링크라 실제 위험은 낮지만, `target="_blank"`를 쓰는 한 항상 짝지어야 하는
+  표준 방어)
+- `sw.js`의 `CACHE_VERSION`을 `v7`로 갱신
+- 헤드리스 브라우저로 새 탭이 실제로 열리고(`target`/`rel` 속성, 원래 탭은
+  `login.html`에 그대로 남아있음) `window.opener === null`(noopener 동작)인 것까지
+  확인. `node --test` 39개 재통과 확인
