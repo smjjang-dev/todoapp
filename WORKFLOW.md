@@ -171,3 +171,25 @@
   `overflow-y: auto`)로 고정해 해결. 더미 할일 30개를 주입한 임시 미리보기 HTML(저장소
   미반영, 검증 후 삭제)로 모바일/데스크톱/다크모드/항목 0~30개 범위에서 헤더 고정·
   본문 스크롤·풋터 최하단 고정을 모두 확인(`node --test` 39개도 재통과 확인)
+
+## 11. 헤더/본문/풋터 변경에 대한 추가 CVE 검증
+
+> 추가 CVE 항목이 있는지 추가 검증해줘
+
+- 9~10번 작업 커밋 전에 수행한 기본 게이트(innerHTML/CSP/시크릿/CDN 버전 고정)에 더해
+  이번 변경 범위(`index.html`/`static/login.html`/`static/signup.html`/
+  `static/css/style.css`/`sw.js`)를 별도로 재검토
+- 새로 추가된 `<footer>` 링크(`README.html`, 로그인/회원가입에서는 `../README.html`)는
+  `target="_blank"`가 없는 동일 출처 상대경로 링크라 탭내빙(reverse tabnabbing)/오픈
+  리다이렉트 해당 없음. CSP의 `default-src 'self'`도 같은 출처 앵커 탐색은 제한하지
+  않아 영향 없음
+- 풋터 링크로 기존보다 한 클릭 더 가까워진 `README.html` 자체도 같이 점검: 자체 인라인
+  `<script>`(사이드 네비 스크롤 하이라이트)가 있지만 정적 마크업만 다루고 사용자 입력·
+  `innerHTML`·`location.hash` 파싱이 없어 안전(이 문서는 폼/인증이 없는 정적 안내
+  페이지라 애초에 CSP 적용 대상 3개 진입점에서 의도적으로 제외된 범위 — `CLAUDE.md`
+  CSP 섹션과 일치)
+- CSP meta 태그(3개 진입점 전부 동일 문자열), CDN import 버전 고정(`sortablejs@1.15.7`,
+  `supabase-js@2.108.2`), 클라이언트 `priority` 값 DB `check` 제약 의존 등 기존 CVE.md
+  1~6번 항목은 이번 변경으로 건드리지 않았음을 재확인
+- **결론: 이번 레이아웃/풋터 변경으로 새로 발생한 취약점 없음** — `CVE.md`/`CVE.html`에
+  추가할 신규 항목 없이 현재 상태 유지

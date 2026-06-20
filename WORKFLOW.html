@@ -181,6 +181,7 @@
     <a href="#step-8">8. git 저장소 연결</a>
     <a href="#step-9">9. 기능 개선 6건</a>
     <a href="#step-10">10. 헤더/본문/풋터 레이아웃</a>
+    <a href="#step-11">11. 추가 CVE 검증</a>
   </nav>
 
   <main>
@@ -383,6 +384,35 @@
           검증 후 삭제)로 모바일/데스크톱/다크모드/항목 0~30개 범위에서 헤더 고정·
           본문 스크롤·풋터 최하단 고정을 모두 확인(<code>node --test</code> 39개도
           재통과 확인)</li>
+      </ul>
+    </section>
+
+    <section id="step-11">
+      <h2>11. 헤더/본문/풋터 변경에 대한 추가 CVE 검증</h2>
+      <div class="prompt-quote"><span class="tag">프롬프트</span>추가 CVE 항목이 있는지 추가 검증해줘</div>
+      <ul>
+        <li>9~10번 작업 커밋 전에 수행한 기본 게이트(innerHTML/CSP/시크릿/CDN 버전 고정)에
+          더해 이번 변경 범위(<code>index.html</code>/<code>static/login.html</code>/
+          <code>static/signup.html</code>/<code>static/css/style.css</code>/
+          <code>sw.js</code>)를 별도로 재검토</li>
+        <li>새로 추가된 <code>&lt;footer&gt;</code> 링크(<code>README.html</code>,
+          로그인/회원가입에서는 <code>../README.html</code>)는 <code>target="_blank"</code>가
+          없는 동일 출처 상대경로 링크라 탭내빙(reverse tabnabbing)/오픈 리다이렉트
+          해당 없음. CSP의 <code>default-src 'self'</code>도 같은 출처 앵커 탐색은
+          제한하지 않아 영향 없음</li>
+        <li>풋터 링크로 기존보다 한 클릭 더 가까워진 <code>README.html</code> 자체도
+          같이 점검: 자체 인라인 <code>&lt;script&gt;</code>(사이드 네비 스크롤
+          하이라이트)가 있지만 정적 마크업만 다루고 사용자 입력·<code>innerHTML</code>·
+          <code>location.hash</code> 파싱이 없어 안전(이 문서는 폼/인증이 없는 정적
+          안내 페이지라 애초에 CSP 적용 대상 3개 진입점에서 의도적으로 제외된 범위 —
+          <code>CLAUDE.md</code> CSP 섹션과 일치)</li>
+        <li>CSP meta 태그(3개 진입점 전부 동일 문자열), CDN import 버전 고정
+          (<code>sortablejs@1.15.7</code>, <code>supabase-js@2.108.2</code>), 클라이언트
+          <code>priority</code> 값 DB <code>check</code> 제약 의존 등 기존
+          <code>CVE.md</code> 1~6번 항목은 이번 변경으로 건드리지 않았음을 재확인</li>
+        <li><strong>결론: 이번 레이아웃/풋터 변경으로 새로 발생한 취약점 없음</strong> —
+          <code>CVE.md</code>/<code>CVE.html</code>에 추가할 신규 항목 없이 현재 상태
+          유지</li>
       </ul>
     </section>
 
