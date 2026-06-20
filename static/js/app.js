@@ -4,10 +4,16 @@ import { requireSession, signOut } from './auth.js';
 import { toggleTheme } from './theme.js';
 import {
   PRIORITY_LABELS,
-  nextPosition,
+  topPosition,
   reorderByIds,
   withCompletionToggle,
+  sortForDisplay,
+  formatRelativeTime,
+  formatDateTime,
+  computeProgress,
 } from './todoLogic.js';
+
+const PAGE_SIZE = 15;
 
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('sw.js');
@@ -21,6 +27,9 @@ const logoutBtn = document.getElementById('logout-btn');
 const greeting = document.getElementById('greeting');
 const themeToggle = document.getElementById('theme-toggle');
 const submitBtn = form.querySelector('button[type="submit"]');
+const clockEl = document.getElementById('current-clock');
+const progressText = document.getElementById('progress-text');
+const progressBarFill = document.getElementById('progress-bar-fill');
 
 logoutBtn.innerHTML =
   '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
@@ -35,6 +44,14 @@ submitBtn.innerHTML =
   '</svg>';
 
 let currentUserId = null;
+let allTodos = [];
+let visibleCount = PAGE_SIZE;
+
+const sentinelObserver = new IntersectionObserver((entries) => {
+  if (entries[0]?.isIntersecting) {
+    loadMore();
+  }
+});
 
 async function loadGreeting() {
   const { data: profile } = await supabase
@@ -42,7 +59,7 @@ async function loadGreeting() {
     .select('nickname')
     .eq('id', currentUserId)
     .single();
-  greeting.textContent = profile ? `${profile.nickname}님 안녕하세요` : '';
+  greeting.textContent = profile ? `${profile.nickname}님` : '';
 }
 
 async function fetchTodos() {
@@ -55,14 +72,33 @@ async function fetchTodos() {
 }
 
 async function refresh() {
-  const todos = await fetchTodos();
-  render(todos);
+  allTodos = await fetchTodos();
+  visibleCount = PAGE_SIZE;
+  render();
 }
 
-function render(todos) {
-  list.innerHTML = '';
+function loadMore() {
+  const sorted = sortForDisplay(allTodos);
+  if (visibleCount >= sorted.length) return;
+  const revealFrom = visibleCount;
+  visibleCount = Math.min(sorted.length, visibleCount + PAGE_SIZE);
+  render(revealFrom);
+}
 
-  if (todos.length === 0) {
+function renderProgress() {
+  const { completed, total, percent } = computeProgress(allTodos);
+  progressText.textContent = `${completed}/${total} 완료 (${percent}%)`;
+  progressBarFill.style.width = `${percent}%`;
+}
+
+function render(revealFrom = -1) {
+  sentinelObserver.disconnect();
+  list.innerHTML = '';
+  renderProgress();
+
+  const sorted = sortForDisplay(allTodos);
+
+  if (sorted.length === 0) {
     const empty = document.createElement('li');
     empty.className = 'empty-message';
     empty.textContent = '할 일이 없습니다.';
@@ -70,9 +106,14 @@ function render(todos) {
     return;
   }
 
-  for (const todo of todos) {
+  const visibleTodos = sorted.slice(0, visibleCount);
+
+  visibleTodos.forEach((todo, index) => {
     const item = document.createElement('li');
     item.className = 'todo-item' + (todo.completed ? ' completed' : '');
+    if (revealFrom >= 0 && index >= revealFrom) {
+      item.classList.add('just-appeared');
+    }
     item.dataset.id = todo.id;
 
     const handle = document.createElement('span');
@@ -108,6 +149,11 @@ function render(todos) {
       completedAt.className = 'completed-at';
       completedAt.textContent = new Date(todo.completed_at).toLocaleString('ko-KR');
       textWrap.appendChild(completedAt);
+    } else if (todo.created_at) {
+      const createdAt = document.createElement('span');
+      createdAt.className = 'created-at';
+      createdAt.textContent = formatRelativeTime(new Date(todo.created_at));
+      textWrap.appendChild(createdAt);
     }
 
     const deleteBtn = document.createElement('button');
@@ -128,6 +174,13 @@ function render(todos) {
     item.appendChild(textWrap);
     item.appendChild(deleteBtn);
     list.appendChild(item);
+  });
+
+  if (visibleCount < sorted.length) {
+    const sentinel = document.createElement('li');
+    sentinel.className = 'scroll-sentinel';
+    list.appendChild(sentinel);
+    sentinelObserver.observe(sentinel);
   }
 }
 
@@ -136,7 +189,7 @@ async function addTodo(text, priority) {
   const { error } = await supabase.from('todo_todos').insert({
     text,
     priority,
-    position: nextPosition(todos),
+    position: topPosition(todos),
     user_id: currentUserId,
   });
   if (error) throw error;
@@ -161,8 +214,25 @@ async function deleteTodo(id) {
 }
 
 async function persistOrder() {
-  const orderedIds = [...list.querySelectorAll('.todo-item')].map((el) => el.dataset.id);
-  const updates = reorderByIds([], orderedIds);
+  const visibleIncompleteIds = [...list.querySelectorAll('.todo-item:not(.completed)')].map(
+    (el) => el.dataset.id
+  );
+  if (visibleIncompleteIds.length === 0) return;
+
+  // 페이지네이션으로 화면에 없는 미완료 항목보다 항상 앞에 오도록, 화면 밖 항목의
+  // 최소 position보다 작은 값들로 재배치한다(완료 항목은 completed_at으로만 정렬되므로 제외).
+  const hiddenIncompletePositions = allTodos
+    .filter((todo) => !todo.completed && !visibleIncompleteIds.includes(todo.id))
+    .map((todo) => todo.position);
+  const offset =
+    hiddenIncompletePositions.length > 0
+      ? Math.min(...hiddenIncompletePositions) - visibleIncompleteIds.length
+      : 0;
+
+  const updates = reorderByIds([], visibleIncompleteIds).map(({ id, position }) => ({
+    id,
+    position: position + offset,
+  }));
   await Promise.all(
     updates.map(({ id, position }) =>
       supabase.from('todo_todos').update({ position }).eq('id', id)
@@ -223,10 +293,19 @@ themeToggle.addEventListener('click', () => {
   themeToggle.setAttribute('aria-pressed', String(next === 'dark'));
 });
 
+function tickClock() {
+  clockEl.textContent = formatDateTime(new Date());
+}
+
 (async function init() {
   const session = await requireSession();
   if (!session) return;
   currentUserId = session.user.id;
   await loadGreeting();
   await refresh();
+
+  tickClock();
+  setInterval(tickClock, 1000);
+  // 등록시간 상대표시("n분 전" 등)가 시간이 지나도 갱신되도록 재조회 없이 주기적으로 다시 그린다.
+  setInterval(() => render(), 60000);
 })();

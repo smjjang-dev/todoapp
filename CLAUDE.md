@@ -76,8 +76,20 @@ python3 -m http.server 8000
   자동으로 변조된 latest를 받아오는 공급망 위험을 줄이기 위함(`CVE.md` 1번 항목
   대응). 버전을 올릴 때는 의도적으로 직접 숫자를 바꿔야 한다.
 - `static/js/todoLogic.js` — 순수 함수(Supabase/DOM 비의존, 단위테스트 대상):
-  `PRIORITY_LABELS`, `isValidPriority`, `priorityLabel`, `nextPosition`,
-  `reorderByIds`, `withCompletionToggle`.
+  `PRIORITY_LABELS`, `isValidPriority`, `priorityLabel`, `topPosition`,
+  `reorderByIds`, `withCompletionToggle`, `sortForDisplay`, `formatRelativeTime`,
+  `formatDateTime`, `computeProgress`.
+  - `topPosition(todos)`는 새 항목을 항상 목록 맨 위에 놓기 위해 기존 `position`
+    최솟값보다 1 작은 값을 반환한다(과거 `nextPosition`은 최댓값+1로 맨 아래에
+    추가했으나, "최근 할일이 상단" 요구사항 때문에 방향을 뒤집었다).
+  - `sortForDisplay(todos)`는 미완료 항목(입력 순서, 즉 `position` 순서 유지)을
+    앞에 두고 완료 항목을 `completed_at` 내림차순(최근 완료가 위)으로 뒤에 이어붙인다
+    — 화면 표시 순서만 바꾸고 `position` 자체는 건드리지 않는다.
+  - `formatRelativeTime(date, now)`는 미완료 항목의 생성시간을 "방금 전"/"n분 전"/
+    "n시간 전"/"n일 전"로, `formatDateTime(date)`는 상단 시계를 "2026년 6월 20일 토
+    20시30분 00초" 형식으로 포맷한다.
+  - `computeProgress(todos)`는 `{ completed, total, percent }`를 반환한다(전체
+    진행률 텍스트/바에 사용, `percent`는 정수로 반올림, `total`이 0이면 0).
 - `static/js/validators.js` — 순수 함수(단위테스트 대상): `isValidEmail`, `isValidPassword`,
   `isValidNickname`. `isValidPassword`는 8자 이상 + 영문/숫자 혼합을 요구한다(과거 6자
   이상만 보던 정책에서 강화 — `CVE.md` 3번 항목 대응).
@@ -112,6 +124,13 @@ python3 -m http.server 8000
     옵션이 "핸들로만 드래그 시작" 규칙을 마우스/터치 모두에서 보장하므로
     `draggable=true/false` 수동 토글은 더 이상 없다. `onEnd`에서 `persistOrder()`가
     `todoLogic.reorderByIds()` 결과로 `todo_todos.position`을 일괄 update한다.
+    드래그는 화면에 보이는 미완료 항목끼리만 동작한다(`.todo-item:not(.completed)`만
+    대상) — 완료 항목은 `completed_at` 기준으로 자동 정렬되므로 드래그 핸들을
+    `.todo-item.completed .drag-handle { visibility: hidden; }`로 숨겨 둔다.
+    `persistOrder()`는 무한 스크롤로 화면에 없는(아직 더 안 보여준) 미완료 항목의
+    `position` 최솟값보다 항상 작은 값으로 화면에 보이는 항목들을 재배치한다 —
+    그렇지 않으면 페이지네이션된 일부만 0..n-1로 덮어써서 아직 안 불러온 항목과
+    순서가 꼬일 수 있다.
   - 중요도는 각 항목의 `.priority-select`(`<select>`)로 즉시 변경 가능하다. `change`
     이벤트로 `updatePriority(id, priority)`가 `todo_todos.priority`를 update한 뒤
     `refresh()`로 다시 그린다(생성 시 폼의 우선순위 select와 별개로, 기존 항목도 언제든
@@ -120,6 +139,25 @@ python3 -m http.server 8000
     `delete-btn`과 동일한 패턴(`innerHTML`로 feather-style SVG 주입)으로 채워지는
     아이콘 버튼이다. 다크모드 토글(`#theme-toggle`)은 `static/js/theme.js`의
     `toggleTheme()`을 호출하고 결과에 맞춰 `aria-pressed`를 동기화한다.
+  - `loadGreeting()`은 `${nickname}님`만 표시한다(과거 "님 안녕하세요" 문구는 삭제).
+  - 미완료 항목에는 `created_at`을 `todoLogic.formatRelativeTime()`으로 표시하는
+    `.created-at`(예: "2시간 전")이, 완료 항목에는 기존처럼 절대시각의 `.completed-at`이
+    표시된다(둘은 상호 배타적 — 완료되면 생성시간 대신 완료시간만 보인다).
+  - `#current-clock`은 `todoLogic.formatDateTime()`으로 1초마다 `setInterval`
+    갱신되는 실시간 시계다. `#progress-text`/`#progress-bar-fill`은
+    `todoLogic.computeProgress(allTodos)`(전체 항목 기준, 페이지네이션과 무관)로
+    매 렌더마다 갱신되며, 진행률 바의 너비 전환은 `style.css`의
+    `.progress-bar-fill { transition: width .3s ease; }`가 처리한다(JS는 `style.width`
+    값만 바꾼다).
+  - 할 일 목록은 `fetchTodos()`로 전체를 한 번에 가져온 뒤(서버 페이지네이션 없음 —
+    개인용 소규모 앱이라는 전제), `sortForDisplay()`로 정렬하고 `visibleCount`(초기
+    15, `PAGE_SIZE` 단위로 증가)만큼만 그린다. 더 보여줄 항목이 남아있으면 보이지
+    않는 sentinel `<li class="scroll-sentinel">`을 리스트 끝에 추가하고
+    `IntersectionObserver`로 감시하다가 화면에 들어오면 네트워크 재조회 없이
+    `visibleCount`를 늘려 다시 그린다(스크롤로 새로 드러나는 항목에만
+    `.just-appeared` 클래스를 붙여 fade-in 애니메이션 적용, 다른 변경 시 전체
+    재렌더에는 애니메이션을 주지 않는다). 60초 주기로도 재조회 없이 `render()`만
+    다시 호출해 상대시간 텍스트("n분 전" 등)를 최신화한다.
 - `tests/todoLogic.test.js`, `tests/validators.test.js` — 루트의 `tests/`에 그대로 둔다
   (이동 안 함). Node 내장 테스트 러너(`node --test`)로 `../static/js/todoLogic.js`/
   `../static/js/validators.js`만 검증. `app.js`/`auth.js`는 Supabase·DOM 의존이라
