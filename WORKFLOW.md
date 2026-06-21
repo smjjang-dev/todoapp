@@ -207,3 +207,40 @@
 - 헤드리스 브라우저로 새 탭이 실제로 열리고(`target`/`rel` 속성, 원래 탭은
   `login.html`에 그대로 남아있음) `window.opener === null`(noopener 동작)인 것까지
   확인. `node --test` 39개 재통과 확인
+
+## 13. 코드 품질 검토 → 성능/보안 개선 → UX 개선 (3단계 에이전트 파이프라인)
+
+> code-quality-reviewer 가 만든 codeReviwer.md을 검토하여 perf-security-optimizer 가
+> 수정 및 개선한 후 ux-design-advisor 가 사용자 경험을 개선하게 해줘
+
+- `codeReviwer.md`(code-quality-reviewer 산출물, 높음 2/중간 3/낮음 3 총 8건)를
+  perf-security-optimizer 에이전트가 성능·보안 관점에서 재검증 후 전부 타당하다고
+  판단해 직접 수정:
+  - `persistOrder()` 부분 실패 시 DOM(SortableJS가 이미 재배치)과 서버 상태가
+    어긋난 채로 멈추는 문제를 `finally`에서 항상 `refresh()`하도록 재구성
+  - `app.js`의 모든 비동기 이벤트 핸들러(form submit/list click·change/Sortable
+    onEnd/logout/init)에 try/catch + 신규 `#status-message` 배너로 일반화된
+    한국어 에러 메시지 노출(Supabase 원본 에러는 `console.error`로만 남김 —
+    로그인/회원가입의 계정 열거 방지 패턴을 todo CRUD에도 동일 적용)
+  - 항목 id 단위 `withItemLock`으로 토글/삭제/우선순위 변경 중 중복 요청(경쟁
+    상태) 차단, 진행 중 컨트롤 `disabled` 처리
+  - 60초 주기 전체 재렌더가 목록 내부 포커스/텍스트 선택 중인 사용자를 끊지
+    않도록 그 틱만 스킵하는 `isUserInteractingWithList()` 추가
+  - `todoLogic.js`의 `reorderByIds(todos, orderedIds)`에서 미사용 `todos`
+    매개변수 제거(`reorderByIds(orderedIds)`로 단순화, 호출부/테스트 동기화)
+  - `sortForDisplay`가 `completed_at === null`인 완료 항목을 `Invalid Date`로
+    정렬하지 않도록 방어, `loadGreeting` 에러 로깅 추가, `addTodo`가 매번 별도
+    `fetchTodos()`를 또 호출하던 중복 네트워크 왕복을 메모리상 `allTodos`로 제거
+  - `sw.js`의 `CACHE_VERSION`을 `v7` → `v8`로 갱신
+- 이어서 ux-design-advisor 에이전트가 위 변경의 실제 사용자 경험을 점검·개선:
+  - `#status-message` 에러 배너의 여백을 보정해 메인 화면(시계 아래/진행률 바
+    위)에 자연스럽게 배치, 빈 상태에서 레이아웃 시프트 없음 확인
+  - `.todo-item.is-pending` 스타일(반투명 + 클릭 차단)을 추가해 토글/삭제/
+    우선순위 변경이 진행 중인 항목에 시각 피드백 부여(기존에는 삭제 버튼만
+    잠금 표시가 전혀 없었음 — 다른 컨트롤과 동일하게 맞춤)
+  - 에러 배너는 자동 소멸 토스트 대신 다음 액션 시도 시 클리어되는 영속 방식
+    유지(사용자가 직접 트리거한 동작이라 예측 가능성을 우선)
+  - 라이트/다크 테마 모두 기존 `--color-*` CSS 변수만 사용해 자동 대응 확인,
+    `sw.js`의 `CACHE_VERSION`을 `v8` → `v9`로 갱신
+- `node --test`로 두 단계 모두 통과(최종 40개) 확인. `codeReviwer.md`에 각 항목별
+  조치 내역을 추가 기록

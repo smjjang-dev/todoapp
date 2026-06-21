@@ -13,7 +13,7 @@ export function topPosition(todos) {
   return Math.min(...todos.map((todo) => todo.position)) - 1;
 }
 
-export function reorderByIds(todos, orderedIds) {
+export function reorderByIds(orderedIds) {
   return orderedIds.map((id, index) => ({ id, position: index }));
 }
 
@@ -25,7 +25,15 @@ export function sortForDisplay(todos) {
   const incomplete = todos.filter((todo) => !todo.completed);
   const completed = todos
     .filter((todo) => todo.completed)
-    .sort((a, b) => new Date(b.completed_at) - new Date(a.completed_at));
+    .sort((a, b) => {
+      // completed_at이 없는(비정상) 항목은 항상 맨 뒤로 보내 NaN 비교로 인한
+      // 정렬 불안정을 방지한다 — 정상 플로우에서는 withCompletionToggle이 항상
+      // completed_at을 채우므로 발생하지 않지만, 외부 데이터 변형/마이그레이션
+      // 누락에 대한 방어.
+      const aTime = a.completed_at ? new Date(a.completed_at).getTime() : -Infinity;
+      const bTime = b.completed_at ? new Date(b.completed_at).getTime() : -Infinity;
+      return bTime - aTime;
+    });
   return [...incomplete, ...completed];
 }
 

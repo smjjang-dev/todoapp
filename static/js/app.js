@@ -30,6 +30,18 @@ const submitBtn = form.querySelector('button[type="submit"]');
 const clockEl = document.getElementById('current-clock');
 const progressText = document.getElementById('progress-text');
 const progressBarFill = document.getElementById('progress-bar-fill');
+const statusMessage = document.getElementById('status-message');
+
+// Supabase 원본 에러 메시지(스키마/내부 정보를 포함할 수 있음)는 화면에 그대로
+// 노출하지 않고, 콘솔에만 남기고 사용자에게는 일반화된 한국어 메시지를 보여준다.
+function showError(message, error) {
+  if (error) console.error(message, error);
+  statusMessage.textContent = message;
+}
+
+function clearError() {
+  statusMessage.textContent = '';
+}
 
 logoutBtn.innerHTML =
   '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
@@ -54,11 +66,16 @@ const sentinelObserver = new IntersectionObserver((entries) => {
 });
 
 async function loadGreeting() {
-  const { data: profile } = await supabase
+  const { data: profile, error } = await supabase
     .from('todo_profiles')
     .select('nickname')
     .eq('id', currentUserId)
     .single();
+  if (error) {
+    console.error('프로필 조회 실패', error);
+    greeting.textContent = '';
+    return;
+  }
   greeting.textContent = profile ? `${profile.nickname}님` : '';
 }
 
@@ -185,11 +202,13 @@ function render(revealFrom = -1) {
 }
 
 async function addTodo(text, priority) {
-  const todos = await fetchTodos();
+  // topPosition은 이미 메모리에 있는 allTodos(직전 refresh() 결과)로 계산한다 —
+  // 폼 submit 핸들러가 곧이어 refresh()로 서버 상태를 다시 가져오므로, 추가 전용
+  // fetchTodos() 왕복을 따로 만들 필요가 없다(네트워크 1회 절감).
   const { error } = await supabase.from('todo_todos').insert({
     text,
     priority,
-    position: topPosition(todos),
+    position: topPosition(allTodos),
     user_id: currentUserId,
   });
   if (error) throw error;
@@ -229,46 +248,117 @@ async function persistOrder() {
       ? Math.min(...hiddenIncompletePositions) - visibleIncompleteIds.length
       : 0;
 
-  const updates = reorderByIds([], visibleIncompleteIds).map(({ id, position }) => ({
+  const updates = reorderByIds(visibleIncompleteIds).map(({ id, position }) => ({
     id,
     position: position + offset,
   }));
-  await Promise.all(
+  const results = await Promise.all(
     updates.map(({ id, position }) =>
-      supabase.from('todo_todos').update({ position }).eq('id', id)
+      supabase
+        .from('todo_todos')
+        .update({ position })
+        .eq('id', id)
+        .then(({ error }) => ({ id, error }))
     )
   );
+  const failed = results.filter((result) => result.error);
+  if (failed.length > 0) {
+    // 일부만 실패해도 reject하지 않고 끝까지 시도한 뒤, 호출부(Sortable onEnd)가
+    // 항상 refresh()로 서버 실제 상태를 다시 그릴 수 있도록 에러를 모아 던진다 —
+    // DOM(SortableJS가 이미 재배치)과 서버 상태가 어긋난 채로 멈추는 것을 방지.
+    throw new Error(`순서 저장 중 ${failed.length}건 실패`);
+  }
 }
 
 form.addEventListener('submit', async (event) => {
   event.preventDefault();
   const text = input.value.trim();
   if (!text) return;
-  await addTodo(text, prioritySelect.value);
-  input.value = '';
-  input.focus();
-  await refresh();
+  clearError();
+  submitBtn.disabled = true;
+  try {
+    await addTodo(text, prioritySelect.value);
+    input.value = '';
+    input.focus();
+    await refresh();
+  } catch (error) {
+    showError('할 일을 추가하지 못했습니다. 잠시 후 다시 시도해주세요.', error);
+  } finally {
+    submitBtn.disabled = false;
+  }
 });
+
+// 같은 항목에 대해 토글/삭제/우선순위 변경이 진행 중인 동안 중복 요청을 막기 위한
+// 가드 — id별로 진행 중 여부만 추적한다(전체 폼을 잠그면 다른 항목 조작까지
+// 막혀버리므로 항목 단위로 좁힌다).
+const pendingItemIds = new Set();
+
+function isItemPending(id) {
+  return pendingItemIds.has(id);
+}
+
+// item(.todo-item DOM 노드)이 살아있는 동안에만 "처리 중" 표시를 입힌다 — 액션이
+// 끝나면 항상 refresh()가 list.innerHTML을 새로 그리므로 별도로 클래스를 벗겨낼
+// 필요는 없지만, 실패 시에도 일관되게 정리되도록 finally에서 명시적으로 제거한다.
+async function withItemLock(id, item, action) {
+  if (isItemPending(id)) return;
+  pendingItemIds.add(id);
+  item.classList.add('is-pending');
+  try {
+    await action();
+    await refresh();
+  } finally {
+    pendingItemIds.delete(id);
+    item.classList.remove('is-pending');
+  }
+}
 
 list.addEventListener('click', async (event) => {
   const item = event.target.closest('.todo-item');
   if (!item) return;
 
-  if (event.target.closest('.delete-btn')) {
-    await deleteTodo(item.dataset.id);
-    await refresh();
+  const deleteBtn = event.target.closest('.delete-btn');
+  if (deleteBtn) {
+    const id = item.dataset.id;
+    if (isItemPending(id)) return;
+    clearError();
+    deleteBtn.disabled = true;
+    try {
+      await withItemLock(id, item, () => deleteTodo(id));
+    } catch (error) {
+      showError('삭제하지 못했습니다. 잠시 후 다시 시도해주세요.', error);
+      deleteBtn.disabled = false;
+    }
   }
 });
 
 list.addEventListener('change', async (event) => {
+  const item = event.target.closest('.todo-item');
+  if (!item) return;
+  const id = item.dataset.id;
+
   if (event.target.classList.contains('toggle-checkbox')) {
-    const item = event.target.closest('.todo-item');
-    await toggleTodo(item.dataset.id, event.target.checked);
-    await refresh();
+    if (isItemPending(id)) return;
+    clearError();
+    const checkbox = event.target;
+    checkbox.disabled = true;
+    try {
+      await withItemLock(id, item, () => toggleTodo(id, checkbox.checked));
+    } catch (error) {
+      showError('완료 상태를 변경하지 못했습니다. 잠시 후 다시 시도해주세요.', error);
+      checkbox.disabled = false;
+    }
   } else if (event.target.classList.contains('priority-select')) {
-    const item = event.target.closest('.todo-item');
-    await updatePriority(item.dataset.id, event.target.value);
-    await refresh();
+    if (isItemPending(id)) return;
+    clearError();
+    const select = event.target;
+    select.disabled = true;
+    try {
+      await withItemLock(id, item, () => updatePriority(id, select.value));
+    } catch (error) {
+      showError('중요도를 변경하지 못했습니다. 잠시 후 다시 시도해주세요.', error);
+      select.disabled = false;
+    }
   }
 });
 
@@ -276,14 +366,31 @@ Sortable.create(list, {
   handle: '.drag-handle',
   animation: 150,
   onEnd: async () => {
-    await persistOrder();
-    await refresh();
+    clearError();
+    try {
+      await persistOrder();
+    } catch (error) {
+      showError('순서를 저장하지 못했습니다. 화면을 새로고침합니다.', error);
+    } finally {
+      // persistOrder가 일부만 실패했더라도, SortableJS가 이미 재배치한 DOM과
+      // 서버 상태가 어긋나지 않도록 항상 서버 실제 상태로 다시 그린다.
+      try {
+        await refresh();
+      } catch (error) {
+        showError('목록을 새로고침하지 못했습니다. 페이지를 새로고침해주세요.', error);
+      }
+    }
   },
 });
 
 logoutBtn.addEventListener('click', async () => {
-  await signOut();
-  window.location.href = 'static/login.html';
+  clearError();
+  try {
+    await signOut();
+    window.location.href = 'static/login.html';
+  } catch (error) {
+    showError('로그아웃하지 못했습니다. 잠시 후 다시 시도해주세요.', error);
+  }
 });
 
 themeToggle.setAttribute('aria-pressed', String(document.documentElement.dataset.theme === 'dark'));
@@ -297,15 +404,34 @@ function tickClock() {
   clockEl.textContent = formatDateTime(new Date());
 }
 
-(async function init() {
-  const session = await requireSession();
-  if (!session) return;
-  currentUserId = session.user.id;
-  await loadGreeting();
-  await refresh();
+// 사용자가 목록 내부 컨트롤(우선순위 select 등)에 포커스를 두고 있거나 텍스트를
+// 드래그 선택 중이면 60초 주기 재렌더를 건너뛴다 — list.innerHTML 재생성이 열려
+// 있는 select를 닫거나 포커스/선택을 끊어버리는 것을 방지(다음 60초 주기에
+// 다시 시도되므로 상대시간 표시가 한 번 갱신을 놓치는 정도로 그친다).
+function isUserInteractingWithList() {
+  if (list.contains(document.activeElement) && document.activeElement !== list) {
+    return true;
+  }
+  const selection = window.getSelection();
+  return Boolean(selection && !selection.isCollapsed && list.contains(selection.anchorNode));
+}
 
-  tickClock();
-  setInterval(tickClock, 1000);
-  // 등록시간 상대표시("n분 전" 등)가 시간이 지나도 갱신되도록 재조회 없이 주기적으로 다시 그린다.
-  setInterval(() => render(), 60000);
+(async function init() {
+  try {
+    const session = await requireSession();
+    if (!session) return;
+    currentUserId = session.user.id;
+    await loadGreeting();
+    await refresh();
+
+    tickClock();
+    setInterval(tickClock, 1000);
+    // 등록시간 상대표시("n분 전" 등)가 시간이 지나도 갱신되도록 재조회 없이 주기적으로 다시 그린다.
+    setInterval(() => {
+      if (isUserInteractingWithList()) return;
+      render();
+    }, 60000);
+  } catch (error) {
+    showError('초기 로딩에 실패했습니다. 페이지를 새로고침해주세요.', error);
+  }
 })();

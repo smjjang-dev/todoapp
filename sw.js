@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'todoapp-shell-v7';
+const CACHE_VERSION = 'todoapp-shell-v9';
 
 const SHELL_ASSETS = [
   'index.html',

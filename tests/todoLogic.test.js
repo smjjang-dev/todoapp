@@ -16,7 +16,7 @@ test('topPosition', async (t) => {
 test('reorderByIds', async () => {
   const { reorderByIds } = await import('../static/js/todoLogic.js');
 
-  const result = reorderByIds([], ['b', 'a', 'c']);
+  const result = reorderByIds(['b', 'a', 'c']);
   assert.deepEqual(result, [
     { id: 'b', position: 0 },
     { id: 'a', position: 1 },
@@ -83,6 +83,15 @@ test('sortForDisplay', async (t) => {
     ];
     const result = sortForDisplay(todos).map((t) => t.id);
     assert.deepEqual(result, ['new', 'mid', 'old']);
+  });
+
+  await t.test('completed_at이 null인 항목은 NaN 없이 맨 뒤로 정렬된다', () => {
+    const todos = [
+      { id: 'broken', completed: true, completed_at: null },
+      { id: 'new', completed: true, completed_at: '2026-01-03T00:00:00.000Z' },
+    ];
+    const result = sortForDisplay(todos).map((t) => t.id);
+    assert.deepEqual(result, ['new', 'broken']);
   });
 });
 

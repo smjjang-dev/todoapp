@@ -216,6 +216,16 @@ html[data-theme="dark"] .theme-toggle .icon-moon {
   margin-top: 12px;
 }
 
+/* 로그인/회원가입 폼의 .error-message(폼 바로 아래 고정 위치)와 달리, 메인
+   화면에서는 시계와 진행률 바 사이에 끼워 넣는다. 위아래 여백을 직접 잡고
+   가운데 정렬해 진행률 텍스트/바와 톤이 맞도록 한다. 빈 문자열일 때도
+   .error-message의 min-height(16px)가 칸을 그대로 유지해 메시지가 뜰 때
+   진행률 바가 아래로 밀리지 않는다(레이아웃 시프트 방지). */
+#status-message {
+  text-align: center;
+  margin: 6px 0 0;
+}
+
 .progress-wrap {
   display: flex;
   flex-direction: column;
@@ -263,6 +273,17 @@ html[data-theme="dark"] .theme-toggle .icon-moon {
   padding: 10px 12px;
   border: 1px solid var(--color-border-light);
   border-radius: 6px;
+  transition: opacity 0.15s ease;
+}
+
+/* 토글/삭제/우선순위 변경이 서버에 반영되는 동안 항목 전체를 흐리게 표시해
+   "지금 처리 중"임을 알리고, 같은 항목에 대한 추가 탭/클릭을 막는다(개별 컨트롤의
+   disabled 속성만으로는 항목 전체가 처리 중이라는 사실이 눈에 띄지 않았다).
+   완료 직후 자동 정렬(sortForDisplay)로 위치가 바뀌는 애니메이션과 겹쳐도
+   자연스럽도록 opacity transition만 사용한다. */
+.todo-item.is-pending {
+  opacity: 0.55;
+  pointer-events: none;
 }
 
 .todo-item .drag-handle {
